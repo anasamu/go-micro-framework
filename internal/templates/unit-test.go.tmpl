@@ -1,0 +1,499 @@
+package unit
+
+import (
+	"context"
+	"testing"
+
+	"{{.ServiceName}}/internal/models"
+	"{{.ServiceName}}/internal/repositories"
+	"{{.ServiceName}}/internal/services"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// MockUserRepository is a mock implementation of UserRepository
+type MockUserRepository struct {
+	mock.Mock
+}
+
+func (m *MockUserRepository) CreateUser(ctx context.Context, user *models.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) GetUser(ctx context.Context, id uint) (*models.User, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockUserRepository) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
+	args := m.Called(ctx, username)
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockUserRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	args := m.Called(ctx, email)
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
+func (m *MockUserRepository) GetUsers(ctx context.Context, page, pageSize int) ([]*models.User, int64, error) {
+	args := m.Called(ctx, page, pageSize)
+	return args.Get(0).([]*models.User), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockUserRepository) UpdateUser(ctx context.Context, user *models.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) DeleteUser(ctx context.Context, id uint) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) UserExists(ctx context.Context, username, email string) (bool, error) {
+	args := m.Called(ctx, username, email)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockUserRepository) ActivateUser(ctx context.Context, id uint) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) DeactivateUser(ctx context.Context, id uint) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) SearchUsers(ctx context.Context, query string, page, pageSize int) ([]*models.User, int64, error) {
+	args := m.Called(ctx, query, page, pageSize)
+	return args.Get(0).([]*models.User), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockUserRepository) GetActiveUsers(ctx context.Context) ([]*models.User, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]*models.User), args.Error(1)
+}
+
+func (m *MockUserRepository) GetInactiveUsers(ctx context.Context) ([]*models.User, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]*models.User), args.Error(1)
+}
+
+func (m *MockUserRepository) GetUserCount(ctx context.Context) (int64, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockUserRepository) GetActiveUserCount(ctx context.Context) (int64, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockUserRepository) GetInactiveUserCount(ctx context.Context) (int64, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+// TestUserService_CreateUser tests the CreateUser method
+func TestUserService_CreateUser(t *testing.T) {
+	tests := []struct {
+		name           string
+		request        *models.CreateUserRequest
+		mockSetup      func(*MockUserRepository)
+		expectedError  string
+		expectedResult *models.UserResponse
+	}{
+		{
+			name: "successful user creation",
+			request: &models.CreateUserRequest{
+				Username:  "testuser",
+				Email:     "test@example.com",
+				Password:  "password123",
+				FirstName: "Test",
+				LastName:  "User",
+			},
+			mockSetup: func(mockRepo *MockUserRepository) {
+				mockRepo.On("UserExists", mock.Anything, "testuser", "test@example.com").Return(false, nil)
+				mockRepo.On("CreateUser", mock.Anything, mock.AnythingOfType("*models.User")).Return(nil)
+			},
+			expectedError: "",
+		},
+		{
+			name: "user already exists",
+			request: &models.CreateUserRequest{
+				Username:  "existinguser",
+				Email:     "existing@example.com",
+				Password:  "password123",
+				FirstName: "Existing",
+				LastName:  "User",
+			},
+			mockSetup: func(mockRepo *MockUserRepository) {
+				mockRepo.On("UserExists", mock.Anything, "existinguser", "existing@example.com").Return(true, nil)
+			},
+			expectedError: "user already exists",
+		},
+		{
+			name: "invalid password",
+			request: &models.CreateUserRequest{
+				Username:  "testuser",
+				Email:     "test@example.com",
+				Password:  "123",
+				FirstName: "Test",
+				LastName:  "User",
+			},
+			mockSetup: func(mockRepo *MockUserRepository) {
+				mockRepo.On("UserExists", mock.Anything, "testuser", "test@example.com").Return(false, nil)
+			},
+			expectedError: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock repository
+			mockRepo := new(MockUserRepository)
+			tt.mockSetup(mockRepo)
+
+			// Create service with mock repository
+			service := services.NewUserService(&services.Service{})
+			service.UserRepo = mockRepo
+
+			// Call the method
+			result, err := service.CreateUser(context.Background(), tt.request)
+
+			// Assertions
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.request.Username, result.Username)
+				assert.Equal(t, tt.request.Email, result.Email)
+				assert.Equal(t, tt.request.FirstName, result.FirstName)
+				assert.Equal(t, tt.request.LastName, result.LastName)
+				assert.True(t, result.IsActive)
+			}
+
+			// Verify mock expectations
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// TestUserService_GetUser tests the GetUser method
+func TestUserService_GetUser(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         uint
+		mockSetup      func(*MockUserRepository)
+		expectedError  string
+		expectedResult *models.UserResponse
+	}{
+		{
+			name:   "successful user retrieval",
+			userID: 1,
+			mockSetup: func(mockRepo *MockUserRepository) {
+				user := &models.User{
+					ID:        1,
+					Username:  "testuser",
+					Email:     "test@example.com",
+					FirstName: "Test",
+					LastName:  "User",
+					IsActive:  true,
+				}
+				mockRepo.On("GetUser", mock.Anything, uint(1)).Return(user, nil)
+			},
+			expectedError: "",
+		},
+		{
+			name:   "user not found",
+			userID: 999,
+			mockSetup: func(mockRepo *MockUserRepository) {
+				mockRepo.On("GetUser", mock.Anything, uint(999)).Return((*models.User)(nil), assert.AnError)
+			},
+			expectedError: "user not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock repository
+			mockRepo := new(MockUserRepository)
+			tt.mockSetup(mockRepo)
+
+			// Create service with mock repository
+			service := services.NewUserService(&services.Service{})
+			service.UserRepo = mockRepo
+
+			// Call the method
+			result, err := service.GetUser(context.Background(), tt.userID)
+
+			// Assertions
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.userID, result.ID)
+			}
+
+			// Verify mock expectations
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// TestUserService_UpdateUser tests the UpdateUser method
+func TestUserService_UpdateUser(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         uint
+		request        *models.UpdateUserRequest
+		mockSetup      func(*MockUserRepository)
+		expectedError  string
+		expectedResult *models.UserResponse
+	}{
+		{
+			name:   "successful user update",
+			userID: 1,
+			request: &models.UpdateUserRequest{
+				FirstName: stringPtr("Updated"),
+				LastName:  stringPtr("Name"),
+			},
+			mockSetup: func(mockRepo *MockUserRepository) {
+				user := &models.User{
+					ID:        1,
+					Username:  "testuser",
+					Email:     "test@example.com",
+					FirstName: "Test",
+					LastName:  "User",
+					IsActive:  true,
+				}
+				mockRepo.On("GetUser", mock.Anything, uint(1)).Return(user, nil)
+				mockRepo.On("UpdateUser", mock.Anything, mock.AnythingOfType("*models.User")).Return(nil)
+			},
+			expectedError: "",
+		},
+		{
+			name:   "user not found for update",
+			userID: 999,
+			request: &models.UpdateUserRequest{
+				FirstName: stringPtr("Updated"),
+			},
+			mockSetup: func(mockRepo *MockUserRepository) {
+				mockRepo.On("GetUser", mock.Anything, uint(999)).Return((*models.User)(nil), assert.AnError)
+			},
+			expectedError: "user not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock repository
+			mockRepo := new(MockUserRepository)
+			tt.mockSetup(mockRepo)
+
+			// Create service with mock repository
+			service := services.NewUserService(&services.Service{})
+			service.UserRepo = mockRepo
+
+			// Call the method
+			result, err := service.UpdateUser(context.Background(), tt.userID, tt.request)
+
+			// Assertions
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.userID, result.ID)
+				if tt.request.FirstName != nil {
+					assert.Equal(t, *tt.request.FirstName, result.FirstName)
+				}
+				if tt.request.LastName != nil {
+					assert.Equal(t, *tt.request.LastName, result.LastName)
+				}
+			}
+
+			// Verify mock expectations
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// TestUserService_DeleteUser tests the DeleteUser method
+func TestUserService_DeleteUser(t *testing.T) {
+	tests := []struct {
+		name          string
+		userID        uint
+		mockSetup     func(*MockUserRepository)
+		expectedError string
+	}{
+		{
+			name:   "successful user deletion",
+			userID: 1,
+			mockSetup: func(mockRepo *MockUserRepository) {
+				mockRepo.On("DeleteUser", mock.Anything, uint(1)).Return(nil)
+			},
+			expectedError: "",
+		},
+		{
+			name:   "user not found for deletion",
+			userID: 999,
+			mockSetup: func(mockRepo *MockUserRepository) {
+				mockRepo.On("DeleteUser", mock.Anything, uint(999)).Return(assert.AnError)
+			},
+			expectedError: "user not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock repository
+			mockRepo := new(MockUserRepository)
+			tt.mockSetup(mockRepo)
+
+			// Create service with mock repository
+			service := services.NewUserService(&services.Service{})
+			service.UserRepo = mockRepo
+
+			// Call the method
+			err := service.DeleteUser(context.Background(), tt.userID)
+
+			// Assertions
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			// Verify mock expectations
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// TestUserService_GetUsers tests the GetUsers method
+func TestUserService_GetUsers(t *testing.T) {
+	tests := []struct {
+		name           string
+		page           int
+		pageSize       int
+		mockSetup      func(*MockUserRepository)
+		expectedError  string
+		expectedResult *models.PaginationResponse
+	}{
+		{
+			name:     "successful users retrieval with pagination",
+			page:     1,
+			pageSize: 10,
+			mockSetup: func(mockRepo *MockUserRepository) {
+				users := []*models.User{
+					{
+						ID:        1,
+						Username:  "user1",
+						Email:     "user1@example.com",
+						FirstName: "User",
+						LastName:  "One",
+						IsActive:  true,
+					},
+					{
+						ID:        2,
+						Username:  "user2",
+						Email:     "user2@example.com",
+						FirstName: "User",
+						LastName:  "Two",
+						IsActive:  true,
+					},
+				}
+				mockRepo.On("GetUsers", mock.Anything, 1, 10).Return(users, int64(2), nil)
+			},
+			expectedError: "",
+		},
+		{
+			name:     "invalid page number",
+			page:     0,
+			pageSize: 10,
+			mockSetup: func(mockRepo *MockUserRepository) {
+				users := []*models.User{}
+				mockRepo.On("GetUsers", mock.Anything, 1, 10).Return(users, int64(0), nil)
+			},
+			expectedError: "",
+		},
+		{
+			name:     "invalid page size",
+			page:     1,
+			pageSize: 0,
+			mockSetup: func(mockRepo *MockUserRepository) {
+				users := []*models.User{}
+				mockRepo.On("GetUsers", mock.Anything, 1, 10).Return(users, int64(0), nil)
+			},
+			expectedError: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock repository
+			mockRepo := new(MockUserRepository)
+			tt.mockSetup(mockRepo)
+
+			// Create service with mock repository
+			service := services.NewUserService(&services.Service{})
+			service.UserRepo = mockRepo
+
+			// Call the method
+			result, err := service.GetUsers(context.Background(), tt.page, tt.pageSize)
+
+			// Assertions
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.page, result.Page)
+				assert.Equal(t, tt.pageSize, result.PageSize)
+			}
+
+			// Verify mock expectations
+			mockRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// TestPasswordHashing tests password hashing functionality
+func TestPasswordHashing(t *testing.T) {
+	password := "testpassword123"
+	
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, hashedPassword)
+
+	// Verify password
+	err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(password))
+	assert.NoError(t, err)
+
+	// Verify wrong password
+	wrongPassword := "wrongpassword"
+	err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(wrongPassword))
+	assert.Error(t, err)
+}
+
+// Helper function to create string pointer
+func stringPtr(s string) *string {
+	return &s
+}

@@ -1,0 +1,327 @@
+package handlers
+
+import (
+	"net/http"
+
+	"{{.ServiceName}}/internal/services"
+	"{{.ServiceName}}/pkg/types"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
+)
+
+// Handler handles HTTP requests
+type Handler struct {
+	service     *services.Service
+	authManager *auth.AuthManager
+	logger      *logrus.Logger
+}
+
+// NewHandler creates a new handler instance
+func NewHandler(service *services.Service, authManager *auth.AuthManager) *Handler {
+	return &Handler{
+		service:     service,
+		authManager: authManager,
+		logger:      logrus.New(),
+	}
+}
+
+// RegisterRoutes registers all HTTP routes
+func (h *Handler) RegisterRoutes(router *gin.Engine) {
+	// Health check endpoint
+	router.GET("/health", h.HealthCheck)
+
+	// API v1 routes
+	v1 := router.Group("/api/v1")
+	{
+		// Public routes
+		v1.GET("/ping", h.Ping)
+
+		{{- if .WithAuth}}
+		// Auth routes
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/login", h.Login)
+			auth.POST("/register", h.Register)
+			auth.POST("/refresh", h.RefreshToken)
+			auth.POST("/logout", h.Logout)
+		}
+
+		// Protected routes
+		protected := v1.Group("/")
+		protected.Use(h.AuthMiddleware())
+		{
+			// User routes
+			users := protected.Group("/users")
+			{
+				users.GET("/", h.GetUsers)
+				users.GET("/:id", h.GetUser)
+				users.POST("/", h.CreateUser)
+				users.PUT("/:id", h.UpdateUser)
+				users.DELETE("/:id", h.DeleteUser)
+			}
+		}
+		{{- else}}
+		// User routes (without auth)
+		users := v1.Group("/users")
+		{
+			users.GET("/", h.GetUsers)
+			users.GET("/:id", h.GetUser)
+			users.POST("/", h.CreateUser)
+			users.PUT("/:id", h.UpdateUser)
+			users.DELETE("/:id", h.DeleteUser)
+		}
+		{{- end}}
+	}
+}
+
+// HealthCheck handles health check requests
+func (h *Handler) HealthCheck(c *gin.Context) {
+	health := map[string]interface{}{
+		"status":    "healthy",
+		"service":   "{{.ServiceName}}",
+		"version":   "1.0.0",
+		"timestamp": "2024-01-01T00:00:00Z",
+	}
+
+	c.JSON(http.StatusOK, health)
+}
+
+// Ping handles ping requests
+func (h *Handler) Ping(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "pong",
+		"service": "{{.ServiceName}}",
+	})
+}
+
+{{- if .WithAuth}}
+
+// Login handles user login
+func (h *Handler) Login(c *gin.Context) {
+	var req types.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid login request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Use existing auth library
+	authReq := &auth.AuthRequest{
+		Username: req.Username,
+		Password: req.Password,
+	}
+
+	authResp, err := h.authManager.Authenticate(c.Request.Context(), "jwt", authReq)
+	if err != nil {
+		h.logger.Error("Authentication failed:", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  authResp.AccessToken,
+		"refresh_token": authResp.RefreshToken,
+		"expires_in":    authResp.ExpiresIn,
+	})
+}
+
+// Register handles user registration
+func (h *Handler) Register(c *gin.Context) {
+	var req types.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid registration request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	user, err := h.service.CreateUser(c.Request.Context(), &req)
+	if err != nil {
+		h.logger.Error("Failed to create user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, user)
+}
+
+// RefreshToken handles token refresh
+func (h *Handler) RefreshToken(c *gin.Context) {
+	var req types.RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid refresh request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Use existing auth library
+	refreshReq := &auth.RefreshTokenRequest{
+		RefreshToken: req.RefreshToken,
+	}
+
+	authResp, err := h.authManager.RefreshToken(c.Request.Context(), "jwt", refreshReq)
+	if err != nil {
+		h.logger.Error("Token refresh failed:", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  authResp.AccessToken,
+		"refresh_token": authResp.RefreshToken,
+		"expires_in":    authResp.ExpiresIn,
+	})
+}
+
+// Logout handles user logout
+func (h *Handler) Logout(c *gin.Context) {
+	var req types.LogoutRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid logout request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Use existing auth library
+	logoutReq := &auth.RevokeTokenRequest{
+		Token: req.AccessToken,
+	}
+
+	err := h.authManager.RevokeToken(c.Request.Context(), "jwt", logoutReq)
+	if err != nil {
+		h.logger.Error("Logout failed:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Logout failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+// AuthMiddleware provides authentication middleware
+func (h *Handler) AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader("Authorization")
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header"})
+			c.Abort()
+			return
+		}
+
+		// Remove "Bearer " prefix
+		if len(token) > 7 && token[:7] == "Bearer " {
+			token = token[7:]
+		}
+
+		// Use existing auth library
+		validateReq := &auth.TokenValidationRequest{
+			Token: token,
+		}
+
+		validateResp, err := h.authManager.ValidateToken(c.Request.Context(), "jwt", validateReq)
+		if err != nil {
+			h.logger.Error("Token validation failed:", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+
+		// Set user info in context
+		c.Set("user_id", validateResp.UserID)
+		c.Set("user_roles", validateResp.Roles)
+		c.Next()
+	}
+}
+
+{{- end}}
+
+// GetUsers handles getting all users
+func (h *Handler) GetUsers(c *gin.Context) {
+	users, err := h.service.GetUsers(c.Request.Context())
+	if err != nil {
+		h.logger.Error("Failed to get users:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
+// GetUser handles getting a specific user
+func (h *Handler) GetUser(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	user, err := h.service.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		h.logger.Error("Failed to get user:", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+// CreateUser handles creating a new user
+func (h *Handler) CreateUser(c *gin.Context) {
+	var req types.CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid create user request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	user, err := h.service.CreateUser(c.Request.Context(), &req)
+	if err != nil {
+		h.logger.Error("Failed to create user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, user)
+}
+
+// UpdateUser handles updating a user
+func (h *Handler) UpdateUser(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	var req types.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid update user request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	user, err := h.service.UpdateUser(c.Request.Context(), userID, &req)
+	if err != nil {
+		h.logger.Error("Failed to update user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+// DeleteUser handles deleting a user
+func (h *Handler) DeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	err := h.service.DeleteUser(c.Request.Context(), userID)
+	if err != nil {
+		h.logger.Error("Failed to delete user:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+
+	c.JSON(http.StatusNoContent, nil)
+}

@@ -1,0 +1,239 @@
+version: '3.8'
+
+services:
+  {{.ServiceName}}:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile
+    container_name: {{.ServiceName}}
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release
+      - PORT=8080
+      - DATABASE_URL=postgres://user:password@postgres:5432/{{.ServiceName}}?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      {{- if .WithAuth}}
+      - JWT_SECRET=your-jwt-secret-key
+      - OAUTH_CLIENT_ID=your-oauth-client-id
+      - OAUTH_CLIENT_SECRET=your-oauth-client-secret
+      - OAUTH_REDIRECT_URL=http://localhost:8080/auth/callback
+      {{- end}}
+      {{- if .WithMonitoring}}
+      - PROMETHEUS_ENDPOINT=http://prometheus:9090
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+      - GRAFANA_ENDPOINT=http://grafana:3000
+      {{- end}}
+      {{- if .WithMessaging}}
+      - KAFKA_BROKERS=kafka:9092
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      {{- end}}
+      {{- if .WithAI}}
+      - OPENAI_API_KEY=your-openai-api-key
+      - ANTHROPIC_API_KEY=your-anthropic-api-key
+      {{- end}}
+      {{- if .WithStorage}}
+      - AWS_ACCESS_KEY_ID=your-aws-access-key
+      - AWS_SECRET_ACCESS_KEY=your-aws-secret-key
+      - AWS_REGION=us-east-1
+      - S3_BUCKET=your-s3-bucket
+      - GCS_CREDENTIALS_FILE=/path/to/gcs-credentials.json
+      - GCS_BUCKET=your-gcs-bucket
+      {{- end}}
+      {{- if .WithDiscovery}}
+      - CONSUL_ADDRESS=consul:8500
+      - CONSUL_TOKEN=your-consul-token
+      - KUBERNETES_CONFIG=/path/to/kubeconfig
+      {{- end}}
+      {{- if .WithCache}}
+      - CACHE_REDIS_URL=redis://redis:6379/2
+      {{- end}}
+      {{- if .WithRateLimit}}
+      - RATELIMIT_REDIS_URL=redis://redis:6379/3
+      {{- end}}
+      {{- if .WithEvent}}
+      - EVENT_POSTGRES_URL=postgres://user:password@postgres:5432/events?sslmode=disable
+      - EVENT_KAFKA_BROKERS=kafka:9092
+      {{- end}}
+      {{- if .WithBackup}}
+      - BACKUP_S3_BUCKET=your-backup-s3-bucket
+      - BACKUP_S3_REGION=us-east-1
+      - BACKUP_GCS_BUCKET=your-backup-gcs-bucket
+      {{- end}}
+      {{- if .WithPayment}}
+      - STRIPE_API_KEY=your-stripe-api-key
+      - STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+      - PAYPAL_CLIENT_ID=your-paypal-client-id
+      - PAYPAL_CLIENT_SECRET=your-paypal-client-secret
+      {{- end}}
+    depends_on:
+      - postgres
+      - redis
+      {{- if .WithMessaging}}
+      - kafka
+      - rabbitmq
+      {{- end}}
+      {{- if .WithMonitoring}}
+      - prometheus
+      - jaeger
+      - grafana
+      {{- end}}
+      {{- if .WithDiscovery}}
+      - consul
+      {{- end}}
+    volumes:
+      - ./configs:/root/configs
+      - ./logs:/var/log/{{.ServiceName}}
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: {{.ServiceName}}-postgres
+    environment:
+      - POSTGRES_DB={{.ServiceName}}
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: {{.ServiceName}}-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  {{- if .WithMessaging}}
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: {{.ServiceName}}-kafka
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: {{.ServiceName}}-zookeeper
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: {{.ServiceName}}-rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  {{- end}}
+
+  {{- if .WithMonitoring}}
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: {{.ServiceName}}-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deployments/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: {{.ServiceName}}-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: {{.ServiceName}}-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  {{- end}}
+
+  {{- if .WithDiscovery}}
+
+  consul:
+    image: consul:latest
+    container_name: {{.ServiceName}}-consul
+    ports:
+      - "8500:8500"
+    command: agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0
+    restart: unless-stopped
+    networks:
+      - {{.ServiceName}}-network
+
+  {{- end}}
+
+volumes:
+  postgres_data:
+  redis_data:
+  {{- if .WithMessaging}}
+  rabbitmq_data:
+  {{- end}}
+  {{- if .WithMonitoring}}
+  prometheus_data:
+  grafana_data:
+  {{- end}}
+
+networks:
+  {{.ServiceName}}-network:
+    driver: bridge

@@ -1,0 +1,833 @@
+# {{.ServiceName}} API Documentation
+
+This document provides comprehensive API documentation for the {{.ServiceName}} microservice.
+
+## Base URL
+
+- **Development**: `http://localhost:8080`
+- **Production**: `https://api.example.com`
+
+## Authentication
+
+{{- if .WithAuth}}
+This API uses JWT (JSON Web Token) for authentication. Include the token in the Authorization header:
+
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+### Getting a Token
+
+1. **Login** using the `/api/v1/auth/login` endpoint
+2. **Register** a new account using the `/api/v1/auth/register` endpoint
+3. Use the returned `access_token` in subsequent requests
+
+### Token Refresh
+
+Tokens expire after 24 hours. Use the `/api/v1/auth/refresh` endpoint to get a new token using your `refresh_token`.
+{{- else}}
+This API does not require authentication for basic operations.
+{{- end}}
+
+## Response Format
+
+All API responses follow a consistent format:
+
+### Success Response
+```json
+{
+  "data": { ... },
+  "message": "Success message",
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Error Response
+```json
+{
+  "error": "Error message",
+  "code": 400,
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+## Status Codes
+
+- `200 OK`: Request successful
+- `201 Created`: Resource created successfully
+- `204 No Content`: Request successful, no content returned
+- `400 Bad Request`: Invalid request data
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Insufficient permissions
+- `404 Not Found`: Resource not found
+- `409 Conflict`: Resource already exists
+- `422 Unprocessable Entity`: Validation failed
+- `500 Internal Server Error`: Server error
+
+## Endpoints
+
+### Health Check
+
+#### GET /health
+
+Check the health status of the service.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "service": "{{.ServiceName}}",
+  "version": "1.0.0",
+  "timestamp": "2024-01-01T00:00:00Z",
+  "details": {
+    "database": "connected",
+    "cache": "connected",
+    "total_users": 150,
+    "active_users": 120
+  }
+}
+```
+
+### Ping
+
+#### GET /api/v1/ping
+
+Simple ping endpoint to verify service availability.
+
+**Response:**
+```json
+{
+  "message": "pong",
+  "service": "{{.ServiceName}}",
+  "time": "2024-01-01T00:00:00Z"
+}
+```
+
+{{- if .WithAuth}}
+
+### Authentication
+
+#### POST /api/v1/auth/login
+
+Authenticate a user and receive access and refresh tokens.
+
+**Request Body:**
+```json
+{
+  "username": "john_doe",
+  "password": "secure_password"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 86400,
+  "token_type": "Bearer"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid request data
+- `401 Unauthorized`: Invalid credentials
+- `403 Forbidden`: Account inactive
+
+#### POST /api/v1/auth/register
+
+Register a new user account.
+
+**Request Body:**
+```json
+{
+  "username": "new_user",
+  "email": "user@example.com",
+  "password": "secure_password",
+  "first_name": "John",
+  "last_name": "Doe"
+}
+```
+
+**Response:**
+```json
+{
+  "id": 123,
+  "username": "new_user",
+  "email": "user@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid request data
+- `409 Conflict`: Username or email already exists
+
+#### POST /api/v1/auth/refresh
+
+Refresh an access token using a refresh token.
+
+**Request Body:**
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 86400,
+  "token_type": "Bearer"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid request data
+- `401 Unauthorized`: Invalid refresh token
+
+#### POST /api/v1/auth/logout
+
+Logout a user and invalidate their tokens.
+
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+
+**Request Body:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid request data
+- `401 Unauthorized`: Invalid token
+- `500 Internal Server Error`: Logout failed
+
+{{- end}}
+
+### User Management
+
+#### GET /api/v1/users
+
+Retrieve a paginated list of users.
+
+{{- if .WithAuth}}
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+{{- end}}
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `page_size` (optional): Number of users per page (default: 10, max: 100)
+- `search` (optional): Search query for username, email, first_name, or last_name
+
+**Response:**
+```json
+{
+  "page": 1,
+  "page_size": 10,
+  "total": 150,
+  "total_pages": 15,
+  "data": [
+    {
+      "id": 1,
+      "username": "john_doe",
+      "email": "john@example.com",
+      "first_name": "John",
+      "last_name": "Doe",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "username": "jane_smith",
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Smith",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+{{- if .WithAuth}}
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Insufficient permissions
+{{- end}}
+- `500 Internal Server Error`: Server error
+
+#### GET /api/v1/users/{id}
+
+Retrieve a specific user by ID.
+
+{{- if .WithAuth}}
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+{{- end}}
+
+**Path Parameters:**
+- `id`: User ID (integer)
+
+**Response:**
+```json
+{
+  "id": 1,
+  "username": "john_doe",
+  "email": "john@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Error Responses:**
+{{- if .WithAuth}}
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Insufficient permissions
+{{- end}}
+- `404 Not Found`: User not found
+- `500 Internal Server Error`: Server error
+
+#### POST /api/v1/users
+
+Create a new user.
+
+{{- if .WithAuth}}
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+{{- end}}
+
+**Request Body:**
+```json
+{
+  "username": "new_user",
+  "email": "user@example.com",
+  "password": "secure_password",
+  "first_name": "John",
+  "last_name": "Doe"
+}
+```
+
+**Response:**
+```json
+{
+  "id": 123,
+  "username": "new_user",
+  "email": "user@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Error Responses:**
+{{- if .WithAuth}}
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Insufficient permissions
+{{- end}}
+- `400 Bad Request`: Invalid request data
+- `409 Conflict`: Username or email already exists
+- `422 Unprocessable Entity`: Validation failed
+- `500 Internal Server Error`: Server error
+
+#### PUT /api/v1/users/{id}
+
+Update an existing user.
+
+{{- if .WithAuth}}
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+{{- end}}
+
+**Path Parameters:**
+- `id`: User ID (integer)
+
+**Request Body:**
+```json
+{
+  "username": "updated_username",
+  "email": "updated@example.com",
+  "first_name": "Updated",
+  "last_name": "Name",
+  "is_active": true
+}
+```
+
+**Response:**
+```json
+{
+  "id": 123,
+  "username": "updated_username",
+  "email": "updated@example.com",
+  "first_name": "Updated",
+  "last_name": "Name",
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
+}
+```
+
+**Error Responses:**
+{{- if .WithAuth}}
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Insufficient permissions
+{{- end}}
+- `400 Bad Request`: Invalid request data
+- `404 Not Found`: User not found
+- `409 Conflict`: Username or email already exists
+- `422 Unprocessable Entity`: Validation failed
+- `500 Internal Server Error`: Server error
+
+#### DELETE /api/v1/users/{id}
+
+Delete a user (soft delete).
+
+{{- if .WithAuth}}
+**Headers:**
+```
+Authorization: Bearer <access-token>
+```
+{{- end}}
+
+**Path Parameters:**
+- `id`: User ID (integer)
+
+**Response:**
+```
+Status: 204 No Content
+```
+
+**Error Responses:**
+{{- if .WithAuth}}
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Insufficient permissions
+{{- end}}
+- `404 Not Found`: User not found
+- `500 Internal Server Error`: Server error
+
+## Data Models
+
+### User
+
+```json
+{
+  "id": 123,
+  "username": "john_doe",
+  "email": "john@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Fields:**
+- `id` (integer): Unique user identifier
+- `username` (string): Unique username (3-50 characters)
+- `email` (string): Valid email address
+- `first_name` (string): User's first name
+- `last_name` (string): User's last name
+- `is_active` (boolean): Whether the user account is active
+- `created_at` (string): ISO 8601 timestamp of creation
+- `updated_at` (string): ISO 8601 timestamp of last update
+
+### CreateUserRequest
+
+```json
+{
+  "username": "new_user",
+  "email": "user@example.com",
+  "password": "secure_password",
+  "first_name": "John",
+  "last_name": "Doe"
+}
+```
+
+**Validation Rules:**
+- `username`: Required, 3-50 characters, unique
+- `email`: Required, valid email format, unique
+- `password`: Required, minimum 6 characters
+- `first_name`: Required, non-empty string
+- `last_name`: Required, non-empty string
+
+### UpdateUserRequest
+
+```json
+{
+  "username": "updated_username",
+  "email": "updated@example.com",
+  "first_name": "Updated",
+  "last_name": "Name",
+  "is_active": true
+}
+```
+
+**Validation Rules:**
+- All fields are optional
+- `username`: 3-50 characters, unique (if provided)
+- `email`: Valid email format, unique (if provided)
+- `first_name`: Non-empty string (if provided)
+- `last_name`: Non-empty string (if provided)
+- `is_active`: Boolean value (if provided)
+
+{{- if .WithAuth}}
+
+### LoginRequest
+
+```json
+{
+  "username": "john_doe",
+  "password": "secure_password"
+}
+```
+
+**Validation Rules:**
+- `username`: Required, non-empty string
+- `password`: Required, non-empty string
+
+### RegisterRequest
+
+```json
+{
+  "username": "new_user",
+  "email": "user@example.com",
+  "password": "secure_password",
+  "first_name": "John",
+  "last_name": "Doe"
+}
+```
+
+**Validation Rules:**
+- Same as CreateUserRequest
+
+### RefreshTokenRequest
+
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Validation Rules:**
+- `refresh_token`: Required, valid JWT token
+
+### LogoutRequest
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Validation Rules:**
+- `access_token`: Required, valid JWT token
+
+{{- end}}
+
+## Error Handling
+
+### Common Error Codes
+
+- `400 Bad Request`: The request data is invalid or malformed
+- `401 Unauthorized`: Authentication is required or the provided token is invalid
+- `403 Forbidden`: The authenticated user doesn't have permission to perform this action
+- `404 Not Found`: The requested resource doesn't exist
+- `409 Conflict`: The request conflicts with the current state of the resource
+- `422 Unprocessable Entity`: The request data failed validation
+- `500 Internal Server Error`: An unexpected server error occurred
+
+### Error Response Format
+
+```json
+{
+  "error": "Error message describing what went wrong",
+  "code": 400,
+  "timestamp": "2024-01-01T00:00:00Z",
+  "details": {
+    "field": "Specific field that caused the error",
+    "reason": "Detailed reason for the error"
+  }
+}
+```
+
+## Rate Limiting
+
+{{- if .WithRateLimit}}
+This API implements rate limiting to prevent abuse:
+
+- **Authenticated requests**: 1000 requests per hour per user
+- **Unauthenticated requests**: 100 requests per hour per IP
+- **Burst limit**: 10 requests per second
+
+Rate limit headers are included in responses:
+- `X-RateLimit-Limit`: Maximum requests allowed
+- `X-RateLimit-Remaining`: Remaining requests in current window
+- `X-RateLimit-Reset`: Time when the rate limit resets
+
+When rate limits are exceeded, a `429 Too Many Requests` status is returned.
+{{- else}}
+This API does not implement rate limiting.
+{{- end}}
+
+## Pagination
+
+List endpoints support pagination with the following query parameters:
+
+- `page`: Page number (1-based, default: 1)
+- `page_size`: Number of items per page (default: 10, max: 100)
+
+Pagination metadata is included in list responses:
+
+```json
+{
+  "page": 1,
+  "page_size": 10,
+  "total": 150,
+  "total_pages": 15,
+  "data": [ ... ]
+}
+```
+
+## Filtering and Search
+
+List endpoints support filtering and search:
+
+- `search`: Search across relevant text fields
+- `is_active`: Filter by active status (boolean)
+- `created_after`: Filter by creation date (ISO 8601)
+- `created_before`: Filter by creation date (ISO 8601)
+
+Example:
+```
+GET /api/v1/users?search=john&is_active=true&page=1&page_size=20
+```
+
+## Caching
+
+{{- if .WithCache}}
+This API implements caching for improved performance:
+
+- **User data**: Cached for 5 minutes
+- **List responses**: Cached for 1 minute
+- **Health checks**: Cached for 30 seconds
+
+Cache headers are included in responses:
+- `Cache-Control`: Cache control directives
+- `ETag`: Entity tag for conditional requests
+- `Last-Modified`: Last modification time
+
+Use conditional requests with `If-None-Match` or `If-Modified-Since` headers for efficient updates.
+{{- else}}
+This API does not implement caching.
+{{- end}}
+
+## Webhooks
+
+{{- if .WithEvent}}
+This API supports webhooks for real-time notifications:
+
+### Supported Events
+
+- `user.created`: Triggered when a new user is created
+- `user.updated`: Triggered when a user is updated
+- `user.deleted`: Triggered when a user is deleted
+- `user.activated`: Triggered when a user is activated
+- `user.deactivated`: Triggered when a user is deactivated
+
+### Webhook Payload
+
+```json
+{
+  "event": "user.created",
+  "timestamp": "2024-01-01T00:00:00Z",
+  "data": {
+    "id": 123,
+    "username": "new_user",
+    "email": "user@example.com",
+    "first_name": "John",
+    "last_name": "Doe"
+  }
+}
+```
+
+### Webhook Configuration
+
+Configure webhooks via the management interface or API endpoints.
+{{- else}}
+This API does not support webhooks.
+{{- end}}
+
+## SDKs and Libraries
+
+### Go
+
+```go
+package main
+
+import (
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    client := &http.Client{}
+    req, _ := http.NewRequest("GET", "http://localhost:8080/api/v1/users", nil)
+    req.Header.Set("Authorization", "Bearer your-token")
+    
+    resp, err := client.Do(req)
+    if err != nil {
+        fmt.Println("Error:", err)
+        return
+    }
+    defer resp.Body.Close()
+    
+    fmt.Println("Status:", resp.Status)
+}
+```
+
+### JavaScript/Node.js
+
+```javascript
+const axios = require('axios');
+
+const api = axios.create({
+  baseURL: 'http://localhost:8080/api/v1',
+  headers: {
+    'Authorization': 'Bearer your-token'
+  }
+});
+
+async function getUsers() {
+  try {
+    const response = await api.get('/users');
+    console.log(response.data);
+  } catch (error) {
+    console.error('Error:', error.response.data);
+  }
+}
+```
+
+### Python
+
+```python
+import requests
+
+headers = {
+    'Authorization': 'Bearer your-token',
+    'Content-Type': 'application/json'
+}
+
+response = requests.get(
+    'http://localhost:8080/api/v1/users',
+    headers=headers
+)
+
+if response.status_code == 200:
+    print(response.json())
+else:
+    print(f'Error: {response.status_code} - {response.text}')
+```
+
+## Examples
+
+### Complete User Management Flow
+
+1. **Register a new user:**
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "email": "john@example.com",
+    "password": "secure_password",
+    "first_name": "John",
+    "last_name": "Doe"
+  }'
+```
+
+2. **Login to get tokens:**
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "john_doe",
+    "password": "secure_password"
+  }'
+```
+
+3. **Get user list:**
+```bash
+curl -X GET http://localhost:8080/api/v1/users \
+  -H "Authorization: Bearer your-access-token"
+```
+
+4. **Update user:**
+```bash
+curl -X PUT http://localhost:8080/api/v1/users/1 \
+  -H "Authorization: Bearer your-access-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "Updated",
+    "last_name": "Name"
+  }'
+```
+
+5. **Delete user:**
+```bash
+curl -X DELETE http://localhost:8080/api/v1/users/1 \
+  -H "Authorization: Bearer your-access-token"
+```
+
+## Support
+
+For API support and questions:
+
+- Check the health endpoint: `GET /health`
+- Review error responses for detailed error information
+- Check the service logs for debugging information
+- Create an issue in the repository for bugs or feature requests
+
+## Changelog
+
+### v1.0.0
+- Initial API release
+- User CRUD operations
+- {{- if .WithAuth}}JWT authentication{{- end}}
+- {{- if .WithDatabase}}Database integration{{- end}}
+- {{- if .WithMonitoring}}Health monitoring{{- end}}
+- {{- if .WithCache}}Response caching{{- end}}
+- {{- if .WithRateLimit}}Rate limiting{{- end}}

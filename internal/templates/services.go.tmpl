@@ -1,0 +1,441 @@
+package services
+
+import (
+	"context"
+	"errors"
+
+	"{{.ServiceName}}/internal/models"
+	"{{.ServiceName}}/internal/repositories"
+
+	"github.com/anasamu/microservices-library-go/auth"
+	"github.com/anasamu/microservices-library-go/database"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// Service handles business logic operations
+type Service struct {
+	userRepo    *repositories.UserRepository
+	authManager *auth.AuthManager
+}
+
+// NewService creates a new service instance
+func NewService(repo *repositories.Repository, authManager *auth.AuthManager) *Service {
+	userRepo := repositories.NewUserRepository(repo)
+	
+	return &Service{
+		userRepo:    userRepo,
+		authManager: authManager,
+	}
+}
+
+// UserService handles user-related business logic
+type UserService struct {
+	*Service
+}
+
+// NewUserService creates a new user service
+func NewUserService(service *Service) *UserService {
+	return &UserService{Service: service}
+}
+
+// CreateUser creates a new user
+func (us *UserService) CreateUser(ctx context.Context, req *models.CreateUserRequest) (*models.UserResponse, error) {
+	// Check if user already exists
+	exists, err := us.userRepo.UserExists(ctx, req.Username, req.Email)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, errors.New("user already exists")
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create user model
+	user := &models.User{
+		Username:  req.Username,
+		Email:     req.Email,
+		Password:  string(hashedPassword),
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		IsActive:  true,
+	}
+
+	// Save user to database
+	if err := us.userRepo.CreateUser(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user.ToResponse(), nil
+}
+
+// GetUser retrieves a user by ID
+func (us *UserService) GetUser(ctx context.Context, id uint) (*models.UserResponse, error) {
+	user, err := us.userRepo.GetUser(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return user.ToResponse(), nil
+}
+
+// GetUserByUsername retrieves a user by username
+func (us *UserService) GetUserByUsername(ctx context.Context, username string) (*models.UserResponse, error) {
+	user, err := us.userRepo.GetUserByUsername(ctx, username)
+	if err != nil {
+		return nil, err
+	}
+
+	return user.ToResponse(), nil
+}
+
+// GetUserByEmail retrieves a user by email
+func (us *UserService) GetUserByEmail(ctx context.Context, email string) (*models.UserResponse, error) {
+	user, err := us.userRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return user.ToResponse(), nil
+}
+
+// GetUsers retrieves all users with pagination
+func (us *UserService) GetUsers(ctx context.Context, page, pageSize int) (*models.PaginationResponse, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+
+	users, total, err := us.userRepo.GetUsers(ctx, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to response format
+	var userResponses []*models.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, user.ToResponse())
+	}
+
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+
+	return &models.PaginationResponse{
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      total,
+		TotalPages: totalPages,
+		Data:       userResponses,
+	}, nil
+}
+
+// UpdateUser updates an existing user
+func (us *UserService) UpdateUser(ctx context.Context, id uint, req *models.UpdateUserRequest) (*models.UserResponse, error) {
+	// Get existing user
+	user, err := us.userRepo.GetUser(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update fields if provided
+	if req.Username != nil {
+		user.Username = *req.Username
+	}
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
+	if req.FirstName != nil {
+		user.FirstName = *req.FirstName
+	}
+	if req.LastName != nil {
+		user.LastName = *req.LastName
+	}
+	if req.IsActive != nil {
+		user.IsActive = *req.IsActive
+	}
+
+	// Save updated user
+	if err := us.userRepo.UpdateUser(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user.ToResponse(), nil
+}
+
+// DeleteUser soft deletes a user
+func (us *UserService) DeleteUser(ctx context.Context, id uint) error {
+	return us.userRepo.DeleteUser(ctx, id)
+}
+
+// ActivateUser activates a user
+func (us *UserService) ActivateUser(ctx context.Context, id uint) error {
+	return us.userRepo.ActivateUser(ctx, id)
+}
+
+// DeactivateUser deactivates a user
+func (us *UserService) DeactivateUser(ctx context.Context, id uint) error {
+	return us.userRepo.DeactivateUser(ctx, id)
+}
+
+// SearchUsers searches users by query
+func (us *UserService) SearchUsers(ctx context.Context, query string, page, pageSize int) (*models.PaginationResponse, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+
+	users, total, err := us.userRepo.SearchUsers(ctx, query, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to response format
+	var userResponses []*models.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, user.ToResponse())
+	}
+
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+
+	return &models.PaginationResponse{
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      total,
+		TotalPages: totalPages,
+		Data:       userResponses,
+	}, nil
+}
+
+// GetActiveUsers retrieves all active users
+func (us *UserService) GetActiveUsers(ctx context.Context) ([]*models.UserResponse, error) {
+	users, err := us.userRepo.GetActiveUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var userResponses []*models.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, user.ToResponse())
+	}
+
+	return userResponses, nil
+}
+
+// GetInactiveUsers retrieves all inactive users
+func (us *UserService) GetInactiveUsers(ctx context.Context) ([]*models.UserResponse, error) {
+	users, err := us.userRepo.GetInactiveUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var userResponses []*models.UserResponse
+	for _, user := range users {
+		userResponses = append(userResponses, user.ToResponse())
+	}
+
+	return userResponses, nil
+}
+
+// GetUserCount retrieves the total number of users
+func (us *UserService) GetUserCount(ctx context.Context) (int64, error) {
+	return us.userRepo.GetUserCount(ctx)
+}
+
+// GetActiveUserCount retrieves the number of active users
+func (us *UserService) GetActiveUserCount(ctx context.Context) (int64, error) {
+	return us.userRepo.GetActiveUserCount(ctx)
+}
+
+// GetInactiveUserCount retrieves the number of inactive users
+func (us *UserService) GetInactiveUserCount(ctx context.Context) (int64, error) {
+	return us.userRepo.GetInactiveUserCount(ctx)
+}
+
+{{- if .WithAuth}}
+
+// AuthService handles authentication-related business logic
+type AuthService struct {
+	*Service
+}
+
+// NewAuthService creates a new auth service
+func NewAuthService(service *Service) *AuthService {
+	return &AuthService{Service: service}
+}
+
+// Authenticate authenticates a user
+func (as *AuthService) Authenticate(ctx context.Context, req *models.LoginRequest) (*auth.AuthResponse, error) {
+	// Get user by username
+	user, err := as.userRepo.GetUserByUsername(ctx, req.Username)
+	if err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+
+	// Check password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		return nil, errors.New("user account is inactive")
+	}
+
+	// Use existing auth library
+	authReq := &auth.AuthRequest{
+		Username: req.Username,
+		Password: req.Password,
+	}
+
+	authResp, err := as.authManager.Authenticate(ctx, "jwt", authReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return authResp, nil
+}
+
+// ValidateToken validates a JWT token
+func (as *AuthService) ValidateToken(ctx context.Context, token string) (*auth.TokenValidationResponse, error) {
+	// Use existing auth library
+	validateReq := &auth.TokenValidationRequest{
+		Token: token,
+	}
+
+	validateResp, err := as.authManager.ValidateToken(ctx, "jwt", validateReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return validateResp, nil
+}
+
+// RefreshToken refreshes a JWT token
+func (as *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*auth.AuthResponse, error) {
+	// Use existing auth library
+	refreshReq := &auth.RefreshTokenRequest{
+		RefreshToken: refreshToken,
+	}
+
+	authResp, err := as.authManager.RefreshToken(ctx, "jwt", refreshReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return authResp, nil
+}
+
+// RevokeToken revokes a JWT token
+func (as *AuthService) RevokeToken(ctx context.Context, token string) error {
+	// Use existing auth library
+	revokeReq := &auth.RevokeTokenRequest{
+		Token: token,
+	}
+
+	err := as.authManager.RevokeToken(ctx, "jwt", revokeReq)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Authorize checks if a user is authorized to perform an action
+func (as *AuthService) Authorize(ctx context.Context, userID string, resource string, action string) error {
+	// Use existing auth library
+	authorizeReq := &auth.AuthorizeRequest{
+		UserID:   userID,
+		Resource: resource,
+		Action:   action,
+	}
+
+	err := as.authManager.Authorize(ctx, "jwt", authorizeReq)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CheckPermission checks if a user has a specific permission
+func (as *AuthService) CheckPermission(ctx context.Context, userID string, permission string) error {
+	// Use existing auth library
+	permissionReq := &auth.CheckPermissionRequest{
+		UserID:     userID,
+		Permission: permission,
+	}
+
+	err := as.authManager.CheckPermission(ctx, "jwt", permissionReq)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+{{- end}}
+
+// HealthService handles health check operations
+type HealthService struct {
+	*Service
+}
+
+// NewHealthService creates a new health service
+func NewHealthService(service *Service) *HealthService {
+	return &HealthService{Service: service}
+}
+
+// GetHealthStatus returns the health status of the service
+func (hs *HealthService) GetHealthStatus(ctx context.Context) *models.HealthCheckResponse {
+	// Get user count
+	userCount, err := hs.userRepo.GetUserCount(ctx)
+	if err != nil {
+		return &models.HealthCheckResponse{
+			Status:    "unhealthy",
+			Service:   "{{.ServiceName}}",
+			Version:   "1.0.0",
+			Timestamp: "2024-01-01T00:00:00Z",
+			Details: map[string]interface{}{
+				"error": err.Error(),
+			},
+		}
+	}
+
+	// Get active user count
+	activeUserCount, err := hs.userRepo.GetActiveUserCount(ctx)
+	if err != nil {
+		return &models.HealthCheckResponse{
+			Status:    "unhealthy",
+			Service:   "{{.ServiceName}}",
+			Version:   "1.0.0",
+			Timestamp: "2024-01-01T00:00:00Z",
+			Details: map[string]interface{}{
+				"error": err.Error(),
+			},
+		}
+	}
+
+	return &models.HealthCheckResponse{
+		Status:    "healthy",
+		Service:   "{{.ServiceName}}",
+		Version:   "1.0.0",
+		Timestamp: "2024-01-01T00:00:00Z",
+		Details: map[string]interface{}{
+			"total_users":  userCount,
+			"active_users": activeUserCount,
+		},
+	}
+}

@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.ServiceName}}
+  labels:
+    app: {{.ServiceName}}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: {{.ServiceName}}
+    version: v1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.ServiceName}}-headless
+  labels:
+    app: {{.ServiceName}}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: {{.ServiceName}}
+    version: v1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.ServiceName}}-loadbalancer
+  labels:
+    app: {{.ServiceName}}
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: {{.ServiceName}}
+    version: v1

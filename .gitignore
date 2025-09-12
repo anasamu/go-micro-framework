@@ -1,0 +1,290 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# Build output
+/bin/
+/dist/
+/build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+logs/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Configuration files
+config.yaml
+config.json
+config.yml
+!config.example.yaml
+!config.example.json
+!config.example.yml
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Test coverage
+coverage.out
+coverage.html
+coverage.xml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Generated files
+generated/
+*.gen.go
+
+# Docker
+.dockerignore
+
+# Kubernetes
+*.kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Helm
+charts/*/charts/
+charts/*/requirements.lock
+
+# Node modules (if any)
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.csr
+
+# Secrets
+secrets/
+*.secret
+
+# Local development
+.local/
+local/
+
+# Test results
+test-results/
+junit.xml
+
+# Performance profiling
+*.prof
+*.pprof
+
+# Benchmark results
+benchmark.txt
+benchmark.out
+
+# Documentation build
+docs/_build/
+site/
+
+# Generated documentation
+api-docs/
+swagger.json
+openapi.json
+
+# Package managers
+go.sum
+!go.sum.example
+
+# Air (live reload)
+.air.toml
+
+# Delve debugger
+__debug_bin
+
+# GoLand
+.idea/
+
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+Session.vim
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.metadata
+.project
+.classpath
+.settings/
+
+# NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# VS Code
+.vscode/
+
+# Local History for Visual Studio Code
+.history/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.metadata
+.project
+.classpath
+.settings/
+
+# NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# VS Code
+.vscode/
+
+# Local History for Visual Studio Code
+.history/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*

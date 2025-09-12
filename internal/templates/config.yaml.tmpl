@@ -1,0 +1,209 @@
+# Configuration for {{.ServiceName}}
+service:
+  name: "{{.ServiceName}}"
+  version: "1.0.0"
+  port: 8080
+  environment: "development"
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "120s"
+
+# Database configuration using existing library
+{{- if .WithDatabase}}
+database:
+  providers:
+    postgresql:
+      url: "${DATABASE_URL}"
+      max_connections: 100
+      max_idle_connections: 10
+      connection_max_lifetime: "1h"
+    redis:
+      url: "${REDIS_URL}"
+      db: 0
+      pool_size: 10
+{{- end}}
+
+# Auth configuration using existing library
+{{- if .WithAuth}}
+auth:
+  providers:
+    jwt:
+      secret: "${JWT_SECRET}"
+      expiration: "24h"
+      issuer: "{{.ServiceName}}"
+    oauth:
+      client_id: "${OAUTH_CLIENT_ID}"
+      client_secret: "${OAUTH_CLIENT_SECRET}"
+      redirect_url: "${OAUTH_REDIRECT_URL}"
+      scopes: ["read", "write"]
+{{- end}}
+
+# Messaging configuration using existing library
+{{- if .WithMessaging}}
+messaging:
+  providers:
+    kafka:
+      brokers: "${KAFKA_BROKERS}"
+      group_id: "{{.ServiceName}}"
+      topics: ["{{.ServiceName}}-events", "{{.ServiceName}}-commands"]
+    rabbitmq:
+      url: "${RABBITMQ_URL}"
+      exchange: "{{.ServiceName}}-exchange"
+      queue: "{{.ServiceName}}-queue"
+{{- end}}
+
+# Monitoring configuration using existing library
+{{- if .WithMonitoring}}
+monitoring:
+  providers:
+    prometheus:
+      endpoint: "${PROMETHEUS_ENDPOINT}"
+      port: 9090
+    jaeger:
+      endpoint: "${JAEGER_ENDPOINT}"
+      service_name: "{{.ServiceName}}"
+    grafana:
+      endpoint: "${GRAFANA_ENDPOINT}"
+{{- end}}
+
+# Optional features configuration using existing libraries
+optional:
+  {{- if .WithAI}}
+  ai:
+    providers:
+      openai:
+        api_key: "${OPENAI_API_KEY}"
+        default_model: "gpt-4"
+        timeout: "30s"
+      anthropic:
+        api_key: "${ANTHROPIC_API_KEY}"
+        default_model: "claude-3-sonnet"
+        timeout: "30s"
+  {{- end}}
+
+  {{- if .WithStorage}}
+  storage:
+    providers:
+      s3:
+        access_key: "${AWS_ACCESS_KEY_ID}"
+        secret_key: "${AWS_SECRET_ACCESS_KEY}"
+        region: "${AWS_REGION}"
+        bucket: "${S3_BUCKET}"
+      gcs:
+        credentials_file: "${GCS_CREDENTIALS_FILE}"
+        bucket: "${GCS_BUCKET}"
+  {{- end}}
+
+  {{- if .WithCache}}
+  cache:
+    providers:
+      redis:
+        url: "${CACHE_REDIS_URL}"
+        db: 2
+        ttl: "1h"
+      memory:
+        max_size: 1000
+        ttl: "30m"
+  {{- end}}
+
+  {{- if .WithDiscovery}}
+  discovery:
+    providers:
+      consul:
+        address: "${CONSUL_ADDRESS}"
+        token: "${CONSUL_TOKEN}"
+      kubernetes:
+        config_path: "${KUBERNETES_CONFIG}"
+  {{- end}}
+
+  {{- if .WithCircuitBreaker}}
+  circuitbreaker:
+    providers:
+      memory:
+        failure_threshold: 5
+        timeout: "30s"
+        max_requests: 3
+  {{- end}}
+
+  {{- if .WithRateLimit}}
+  ratelimit:
+    providers:
+      redis:
+        url: "${RATELIMIT_REDIS_URL}"
+        db: 3
+      memory:
+        requests_per_minute: 100
+  {{- end}}
+
+  {{- if .WithChaos}}
+  chaos:
+    providers:
+      chaos_monkey:
+        enabled: false
+        failure_rate: 0.1
+        latency: "100ms"
+  {{- end}}
+
+  {{- if .WithFailover}}
+  failover:
+    providers:
+      consul:
+        address: "${CONSUL_ADDRESS}"
+        service_name: "{{.ServiceName}}"
+        health_check_interval: "10s"
+  {{- end}}
+
+  {{- if .WithEvent}}
+  event:
+    providers:
+      postgresql:
+        url: "${EVENT_POSTGRES_URL}"
+        table: "events"
+      kafka:
+        brokers: "${EVENT_KAFKA_BROKERS}"
+        topic: "events"
+  {{- end}}
+
+  {{- if .WithScheduling}}
+  scheduling:
+    providers:
+      cron:
+        timezone: "UTC"
+      redis:
+        url: "${REDIS_URL}"
+        db: 1
+  {{- end}}
+
+  {{- if .WithBackup}}
+  backup:
+    providers:
+      s3:
+        bucket: "${BACKUP_S3_BUCKET}"
+        region: "${BACKUP_S3_REGION}"
+      gcs:
+        bucket: "${BACKUP_GCS_BUCKET}"
+  {{- end}}
+
+  {{- if .WithPayment}}
+  payment:
+    providers:
+      stripe:
+        api_key: "${STRIPE_API_KEY}"
+        webhook_secret: "${STRIPE_WEBHOOK_SECRET}"
+      paypal:
+        client_id: "${PAYPAL_CLIENT_ID}"
+        client_secret: "${PAYPAL_CLIENT_SECRET}"
+  {{- end}}
+
+  {{- if .WithFileGen}}
+  filegen:
+    providers:
+      templates:
+        path: "./templates"
+      output:
+        path: "./generated"
+  {{- end}}

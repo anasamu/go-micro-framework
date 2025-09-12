@@ -1,0 +1,154 @@
+package main
+
+import (
+	"context"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	// Import existing microservices-library-go libraries
+	"github.com/anasamu/microservices-library-go/config"
+	"github.com/anasamu/microservices-library-go/logging"
+	"github.com/anasamu/microservices-library-go/monitoring"
+	"github.com/anasamu/microservices-library-go/database"
+	"github.com/anasamu/microservices-library-go/auth"
+	"github.com/anasamu/microservices-library-go/middleware"
+	"github.com/anasamu/microservices-library-go/communication"
+
+	// Import generated service components
+	"{{.ServiceName}}/internal/handlers"
+	"{{.ServiceName}}/internal/services"
+	"{{.ServiceName}}/internal/repositories"
+	"{{.ServiceName}}/internal/middleware"
+	"{{.ServiceName}}/pkg/types"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
+)
+
+func main() {
+	ctx := context.Background()
+	
+	// Initialize logger
+	logger := logrus.New()
+	logger.SetLevel(logrus.InfoLevel)
+	logger.SetFormatter(&logrus.JSONFormatter{})
+
+	// Initialize configuration manager using existing library
+	configManager := config.NewManager()
+	if err := configManager.Load(); err != nil {
+		log.Fatal("Failed to load configuration:", err)
+	}
+
+	// Initialize logging manager using existing library
+	loggingManager := logging.NewManager()
+	if err := loggingManager.Initialize(); err != nil {
+		log.Fatal("Failed to initialize logging:", err)
+	}
+
+	// Initialize monitoring manager using existing library
+	monitoringManager := monitoring.NewMonitoringManager(
+		monitoring.DefaultManagerConfig(),
+		logger,
+	)
+	if err := monitoringManager.Start(ctx); err != nil {
+		log.Fatal("Failed to start monitoring:", err)
+	}
+
+	// Initialize database manager using existing library
+	var databaseManager *database.DatabaseManager
+	{{- if .WithDatabase}}
+	databaseManager = database.NewDatabaseManager(
+		database.DefaultManagerConfig(),
+		logger,
+	)
+	if err := databaseManager.Connect(ctx, "postgresql"); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	{{- end}}
+
+	// Initialize auth manager using existing library
+	var authManager *auth.AuthManager
+	{{- if .WithAuth}}
+	authManager = auth.NewAuthManager(
+		auth.DefaultManagerConfig(),
+		logger,
+	)
+	if err := authManager.Initialize(); err != nil {
+		log.Fatal("Failed to initialize auth:", err)
+	}
+	{{- end}}
+
+	// Initialize middleware manager using existing library
+	middlewareManager := middleware.NewMiddlewareManager(
+		middleware.DefaultManagerConfig(),
+		logger,
+	)
+	if err := middlewareManager.SetupChain(); err != nil {
+		log.Fatal("Failed to setup middleware chain:", err)
+	}
+
+	// Initialize communication manager using existing library
+	communicationManager := communication.NewCommunicationManager(
+		communication.DefaultManagerConfig(),
+		logger,
+	)
+
+	// Initialize service dependencies
+	repository := repositories.NewRepository(databaseManager)
+	service := services.NewService(repository, authManager)
+	handler := handlers.NewHandler(service, authManager)
+
+	// Setup HTTP server
+	router := gin.Default()
+	
+	// Add middleware
+	router.Use(middlewareManager.CreateHTTPMiddleware())
+	
+	// Register routes
+	handler.RegisterRoutes(router)
+
+	// Start server
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: router,
+	}
+
+	// Graceful shutdown
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("Failed to start server:", err)
+		}
+	}()
+
+	logger.Info("Service started successfully on port 8080")
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("Shutting down server...")
+
+	// Shutdown server
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Fatal("Server forced to shutdown:", err)
+	}
+
+	// Close connections
+	if databaseManager != nil {
+		databaseManager.Close()
+	}
+
+	if monitoringManager != nil {
+		monitoringManager.Close()
+	}
+
+	logger.Info("Server exited")
+}

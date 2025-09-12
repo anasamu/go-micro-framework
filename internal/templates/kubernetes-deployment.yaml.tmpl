@@ -1,0 +1,226 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.ServiceName}}
+  labels:
+    app: {{.ServiceName}}
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: {{.ServiceName}}
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: {{.ServiceName}}
+        version: v1
+    spec:
+      containers:
+      - name: {{.ServiceName}}
+        image: {{.ServiceName}}:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: GIN_MODE
+          value: "release"
+        - name: PORT
+          value: "8080"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: redis-url
+        {{- if .WithAuth}}
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: jwt-secret
+        - name: OAUTH_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: oauth-client-id
+        - name: OAUTH_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: oauth-client-secret
+        - name: OAUTH_REDIRECT_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: oauth-redirect-url
+        {{- end}}
+        {{- if .WithMonitoring}}
+        - name: PROMETHEUS_ENDPOINT
+          value: "http://prometheus:9090"
+        - name: JAEGER_ENDPOINT
+          value: "http://jaeger:14268/api/traces"
+        - name: GRAFANA_ENDPOINT
+          value: "http://grafana:3000"
+        {{- end}}
+        {{- if .WithMessaging}}
+        - name: KAFKA_BROKERS
+          value: "kafka:9092"
+        - name: RABBITMQ_URL
+          value: "amqp://guest:guest@rabbitmq:5672/"
+        {{- end}}
+        {{- if .WithAI}}
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: openai-api-key
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: anthropic-api-key
+        {{- end}}
+        {{- if .WithStorage}}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: aws-access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: aws-secret-access-key
+        - name: AWS_REGION
+          value: "us-east-1"
+        - name: S3_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: s3-bucket
+        - name: GCS_CREDENTIALS_FILE
+          value: "/etc/gcs/credentials.json"
+        - name: GCS_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: gcs-bucket
+        {{- end}}
+        {{- if .WithDiscovery}}
+        - name: CONSUL_ADDRESS
+          value: "consul:8500"
+        - name: CONSUL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: consul-token
+        - name: KUBERNETES_CONFIG
+          value: "/etc/kubernetes/kubeconfig"
+        {{- end}}
+        {{- if .WithCache}}
+        - name: CACHE_REDIS_URL
+          value: "redis://redis:6379/2"
+        {{- end}}
+        {{- if .WithRateLimit}}
+        - name: RATELIMIT_REDIS_URL
+          value: "redis://redis:6379/3"
+        {{- end}}
+        {{- if .WithEvent}}
+        - name: EVENT_POSTGRES_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: event-postgres-url
+        - name: EVENT_KAFKA_BROKERS
+          value: "kafka:9092"
+        {{- end}}
+        {{- if .WithBackup}}
+        - name: BACKUP_S3_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: backup-s3-bucket
+        - name: BACKUP_S3_REGION
+          value: "us-east-1"
+        - name: BACKUP_GCS_BUCKET
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: backup-gcs-bucket
+        {{- end}}
+        {{- if .WithPayment}}
+        - name: STRIPE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: stripe-api-key
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: stripe-webhook-secret
+        - name: PAYPAL_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: paypal-client-id
+        - name: PAYPAL_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{.ServiceName}}-secrets
+              key: paypal-client-secret
+        {{- end}}
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: config-volume
+          mountPath: /root/configs
+        - name: logs-volume
+          mountPath: /var/log/{{.ServiceName}}
+        {{- if .WithStorage}}
+        - name: gcs-credentials
+          mountPath: /etc/gcs
+        {{- end}}
+        {{- if .WithDiscovery}}
+        - name: kubeconfig
+          mountPath: /etc/kubernetes
+        {{- end}}
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{.ServiceName}}-config
+      - name: logs-volume
+        emptyDir: {}
+      {{- if .WithStorage}}
+      - name: gcs-credentials
+        secret:
+          secretName: {{.ServiceName}}-gcs-credentials
+      {{- end}}
+      {{- if .WithDiscovery}}
+      - name: kubeconfig
+        secret:
+          secretName: {{.ServiceName}}-kubeconfig
+      {{- end}}
+      restartPolicy: Always

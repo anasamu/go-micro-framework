@@ -1,0 +1,549 @@
+package integration
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"{{.ServiceName}}/internal/handlers"
+	"{{.ServiceName}}/internal/models"
+	"{{.ServiceName}}/internal/repositories"
+	"{{.ServiceName}}/internal/services"
+
+	"github.com/anasamu/microservices-library-go/auth"
+	"github.com/anasamu/microservices-library-go/database"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+// TestSetup provides test setup and teardown
+type TestSetup struct {
+	db       *gorm.DB
+	server   *gin.Engine
+	handlers *handlers.Handler
+	services *services.Service
+	repos    *repositories.Repository
+}
+
+// SetupTestDatabase sets up an in-memory SQLite database for testing
+func SetupTestDatabase(t *testing.T) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	// Auto-migrate the schema
+	err = db.AutoMigrate(&models.User{})
+	require.NoError(t, err)
+
+	return db
+}
+
+// SetupTestServer sets up a test server with all dependencies
+func SetupTestServer(t *testing.T) *TestSetup {
+	// Setup database
+	db := SetupTestDatabase(t)
+
+	// Setup repository
+	repo := &repositories.Repository{DB: db}
+
+	// Setup service
+	service := &services.Service{
+		UserRepo: repositories.NewUserRepository(repo),
+	}
+
+	// Setup handlers
+	handler := handlers.NewHandler(service, nil)
+
+	// Setup Gin router
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler.RegisterRoutes(router)
+
+	return &TestSetup{
+		db:       db,
+		server:   router,
+		handlers: handler,
+		services: service,
+		repos:    repo,
+	}
+}
+
+// TestUserCRUDIntegration tests the complete user CRUD operations
+func TestUserCRUDIntegration(t *testing.T) {
+	setup := SetupTestServer(t)
+	defer setup.db.Close()
+
+	t.Run("Create and retrieve user", func(t *testing.T) {
+		// Create user request
+		createReq := models.CreateUserRequest{
+			Username:  "testuser",
+			Email:     "test@example.com",
+			Password:  "password123",
+			FirstName: "Test",
+			LastName:  "User",
+		}
+
+		// Create user
+		user, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+		require.NoError(t, err)
+		require.NotNil(t, user)
+
+		// Verify user was created
+		assert.Equal(t, createReq.Username, user.Username)
+		assert.Equal(t, createReq.Email, user.Email)
+		assert.Equal(t, createReq.FirstName, user.FirstName)
+		assert.Equal(t, createReq.LastName, user.LastName)
+		assert.True(t, user.IsActive)
+
+		// Retrieve user by ID
+		retrievedUser, err := setup.services.UserService.GetUser(context.Background(), user.ID)
+		require.NoError(t, err)
+		require.NotNil(t, retrievedUser)
+
+		// Verify retrieved user
+		assert.Equal(t, user.ID, retrievedUser.ID)
+		assert.Equal(t, user.Username, retrievedUser.Username)
+		assert.Equal(t, user.Email, retrievedUser.Email)
+		assert.Equal(t, user.FirstName, retrievedUser.FirstName)
+		assert.Equal(t, user.LastName, retrievedUser.LastName)
+		assert.Equal(t, user.IsActive, retrievedUser.IsActive)
+	})
+
+	t.Run("Update user", func(t *testing.T) {
+		// Create user first
+		createReq := models.CreateUserRequest{
+			Username:  "updateuser",
+			Email:     "update@example.com",
+			Password:  "password123",
+			FirstName: "Update",
+			LastName:  "User",
+		}
+
+		user, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+		require.NoError(t, err)
+
+		// Update user
+		updateReq := models.UpdateUserRequest{
+			FirstName: stringPtr("Updated"),
+			LastName:  stringPtr("Name"),
+			IsActive:  boolPtr(false),
+		}
+
+		updatedUser, err := setup.services.UserService.UpdateUser(context.Background(), user.ID, &updateReq)
+		require.NoError(t, err)
+		require.NotNil(t, updatedUser)
+
+		// Verify updated user
+		assert.Equal(t, user.ID, updatedUser.ID)
+		assert.Equal(t, user.Username, updatedUser.Username)
+		assert.Equal(t, user.Email, updatedUser.Email)
+		assert.Equal(t, "Updated", updatedUser.FirstName)
+		assert.Equal(t, "Name", updatedUser.LastName)
+		assert.False(t, updatedUser.IsActive)
+	})
+
+	t.Run("Delete user", func(t *testing.T) {
+		// Create user first
+		createReq := models.CreateUserRequest{
+			Username:  "deleteuser",
+			Email:     "delete@example.com",
+			Password:  "password123",
+			FirstName: "Delete",
+			LastName:  "User",
+		}
+
+		user, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+		require.NoError(t, err)
+
+		// Delete user
+		err = setup.services.UserService.DeleteUser(context.Background(), user.ID)
+		require.NoError(t, err)
+
+		// Verify user was deleted
+		deletedUser, err := setup.services.UserService.GetUser(context.Background(), user.ID)
+		assert.Error(t, err)
+		assert.Nil(t, deletedUser)
+	})
+
+	t.Run("Get users with pagination", func(t *testing.T) {
+		// Create multiple users
+		for i := 0; i < 5; i++ {
+			createReq := models.CreateUserRequest{
+				Username:  fmt.Sprintf("user%d", i),
+				Email:     fmt.Sprintf("user%d@example.com", i),
+				Password:  "password123",
+				FirstName: fmt.Sprintf("User%d", i),
+				LastName:  "Test",
+			}
+
+			_, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+			require.NoError(t, err)
+		}
+
+		// Get users with pagination
+		users, err := setup.services.UserService.GetUsers(context.Background(), 1, 3)
+		require.NoError(t, err)
+		require.NotNil(t, users)
+
+		// Verify pagination
+		assert.Equal(t, 1, users.Page)
+		assert.Equal(t, 3, users.PageSize)
+		assert.Equal(t, int64(5), users.Total)
+		assert.Equal(t, 2, users.TotalPages)
+		assert.Len(t, users.Data, 3)
+	})
+}
+
+// TestHTTPEndpointsIntegration tests HTTP endpoints integration
+func TestHTTPEndpointsIntegration(t *testing.T) {
+	setup := SetupTestServer(t)
+	defer setup.db.Close()
+
+	t.Run("Health check endpoint", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/health", nil)
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, "healthy", response["status"])
+		assert.Equal(t, "{{.ServiceName}}", response["service"])
+	})
+
+	t.Run("Ping endpoint", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/ping", nil)
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, "pong", response["message"])
+		assert.Equal(t, "{{.ServiceName}}", response["service"])
+	})
+
+	t.Run("Create user via HTTP", func(t *testing.T) {
+		createReq := models.CreateUserRequest{
+			Username:  "httpuser",
+			Email:     "http@example.com",
+			Password:  "password123",
+			FirstName: "HTTP",
+			LastName:  "User",
+		}
+
+		reqBody, err := json.Marshal(createReq)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest("POST", "/api/v1/users", bytes.NewBuffer(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		var response models.UserResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, createReq.Username, response.Username)
+		assert.Equal(t, createReq.Email, response.Email)
+		assert.Equal(t, createReq.FirstName, response.FirstName)
+		assert.Equal(t, createReq.LastName, response.LastName)
+		assert.True(t, response.IsActive)
+	})
+
+	t.Run("Get user via HTTP", func(t *testing.T) {
+		// Create user first
+		createReq := models.CreateUserRequest{
+			Username:  "getuser",
+			Email:     "get@example.com",
+			Password:  "password123",
+			FirstName: "Get",
+			LastName:  "User",
+		}
+
+		user, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+		require.NoError(t, err)
+
+		// Get user via HTTP
+		req := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/users/%d", user.ID), nil)
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response models.UserResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, user.ID, response.ID)
+		assert.Equal(t, user.Username, response.Username)
+		assert.Equal(t, user.Email, response.Email)
+		assert.Equal(t, user.FirstName, response.FirstName)
+		assert.Equal(t, user.LastName, response.LastName)
+		assert.Equal(t, user.IsActive, response.IsActive)
+	})
+
+	t.Run("Update user via HTTP", func(t *testing.T) {
+		// Create user first
+		createReq := models.CreateUserRequest{
+			Username:  "updatehttpuser",
+			Email:     "updatehttp@example.com",
+			Password:  "password123",
+			FirstName: "UpdateHTTP",
+			LastName:  "User",
+		}
+
+		user, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+		require.NoError(t, err)
+
+		// Update user via HTTP
+		updateReq := models.UpdateUserRequest{
+			FirstName: stringPtr("UpdatedHTTP"),
+			LastName:  stringPtr("Name"),
+		}
+
+		reqBody, err := json.Marshal(updateReq)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest("PUT", fmt.Sprintf("/api/v1/users/%d", user.ID), bytes.NewBuffer(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response models.UserResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, user.ID, response.ID)
+		assert.Equal(t, "UpdatedHTTP", response.FirstName)
+		assert.Equal(t, "Name", response.LastName)
+	})
+
+	t.Run("Delete user via HTTP", func(t *testing.T) {
+		// Create user first
+		createReq := models.CreateUserRequest{
+			Username:  "deletehttpuser",
+			Email:     "deletehttp@example.com",
+			Password:  "password123",
+			FirstName: "DeleteHTTP",
+			LastName:  "User",
+		}
+
+		user, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+		require.NoError(t, err)
+
+		// Delete user via HTTP
+		req := httptest.NewRequest("DELETE", fmt.Sprintf("/api/v1/users/%d", user.ID), nil)
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNoContent, w.Code)
+
+		// Verify user was deleted
+		deletedUser, err := setup.services.UserService.GetUser(context.Background(), user.ID)
+		assert.Error(t, err)
+		assert.Nil(t, deletedUser)
+	})
+
+	t.Run("Get users via HTTP", func(t *testing.T) {
+		// Create multiple users
+		for i := 0; i < 3; i++ {
+			createReq := models.CreateUserRequest{
+				Username:  fmt.Sprintf("httpuser%d", i),
+				Email:     fmt.Sprintf("httpuser%d@example.com", i),
+				Password:  "password123",
+				FirstName: fmt.Sprintf("HTTPUser%d", i),
+				LastName:  "Test",
+			}
+
+			_, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+			require.NoError(t, err)
+		}
+
+		// Get users via HTTP
+		req := httptest.NewRequest("GET", "/api/v1/users", nil)
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response models.PaginationResponse
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, response.Page)
+		assert.Equal(t, 10, response.PageSize)
+		assert.True(t, response.Total >= 3)
+		assert.NotEmpty(t, response.Data)
+	})
+}
+
+// TestErrorHandlingIntegration tests error handling in HTTP endpoints
+func TestErrorHandlingIntegration(t *testing.T) {
+	setup := SetupTestServer(t)
+	defer setup.db.Close()
+
+	t.Run("Create user with invalid data", func(t *testing.T) {
+		// Create user with missing required fields
+		createReq := models.CreateUserRequest{
+			Username: "", // Missing username
+			Email:    "invalid-email", // Invalid email
+			Password: "123", // Too short password
+		}
+
+		reqBody, err := json.Marshal(createReq)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest("POST", "/api/v1/users", bytes.NewBuffer(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var response map[string]interface{}
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Contains(t, response, "error")
+	})
+
+	t.Run("Get non-existent user", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/users/999", nil)
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Contains(t, response, "error")
+		assert.Equal(t, "User not found", response["error"])
+	})
+
+	t.Run("Update non-existent user", func(t *testing.T) {
+		updateReq := models.UpdateUserRequest{
+			FirstName: stringPtr("Updated"),
+		}
+
+		reqBody, err := json.Marshal(updateReq)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest("PUT", "/api/v1/users/999", bytes.NewBuffer(reqBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+		var response map[string]interface{}
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Contains(t, response, "error")
+	})
+
+	t.Run("Delete non-existent user", func(t *testing.T) {
+		req := httptest.NewRequest("DELETE", "/api/v1/users/999", nil)
+		w := httptest.NewRecorder()
+
+		setup.server.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		assert.Contains(t, response, "error")
+	})
+}
+
+// TestConcurrentOperationsIntegration tests concurrent operations
+func TestConcurrentOperationsIntegration(t *testing.T) {
+	setup := SetupTestServer(t)
+	defer setup.db.Close()
+
+	t.Run("Concurrent user creation", func(t *testing.T) {
+		const numUsers = 10
+		done := make(chan bool, numUsers)
+		errors := make(chan error, numUsers)
+
+		// Create users concurrently
+		for i := 0; i < numUsers; i++ {
+			go func(index int) {
+				createReq := models.CreateUserRequest{
+					Username:  fmt.Sprintf("concurrentuser%d", index),
+					Email:     fmt.Sprintf("concurrent%d@example.com", index),
+					Password:  "password123",
+					FirstName: fmt.Sprintf("Concurrent%d", index),
+					LastName:  "User",
+				}
+
+				_, err := setup.services.UserService.CreateUser(context.Background(), &createReq)
+				if err != nil {
+					errors <- err
+				} else {
+					done <- true
+				}
+			}(i)
+		}
+
+		// Wait for all operations to complete
+		completed := 0
+		for completed < numUsers {
+			select {
+			case <-done:
+				completed++
+			case err := <-errors:
+				t.Errorf("Concurrent user creation failed: %v", err)
+				completed++
+			case <-time.After(5 * time.Second):
+				t.Fatal("Concurrent operations timed out")
+			}
+		}
+
+		// Verify all users were created
+		users, err := setup.services.UserService.GetUsers(context.Background(), 1, 100)
+		require.NoError(t, err)
+		assert.True(t, users.Total >= int64(numUsers))
+	})
+}
+
+// Helper functions
+func stringPtr(s string) *string {
+	return &s
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
