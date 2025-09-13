@@ -38,7 +38,7 @@ Examples:
 
 func init() {
 	updateCmd.Flags().StringVarP(&updateType, "type", "t", "all", "Type of update (all, dependencies, framework, cli, config)")
-	updateCmd.Flags().StringVarP(&updateVersion, "version", "v", "", "Specific version to update to")
+	updateCmd.Flags().StringVarP(&updateVersion, "version", "V", "", "Specific version to update to")
 	updateCmd.Flags().BoolVar(&updateCheck, "check", false, "Check for available updates without installing")
 	updateCmd.Flags().BoolVar(&updateForce, "force", false, "Force update even if there are breaking changes")
 }
