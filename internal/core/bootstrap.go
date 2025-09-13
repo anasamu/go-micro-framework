@@ -6,58 +6,86 @@ import (
 	"sync"
 	"time"
 
-	// Import all microservices-library-go libraries
-	"github.com/anasamu/microservices-library-go/ai"
-	"github.com/anasamu/microservices-library-go/auth"
-	"github.com/anasamu/microservices-library-go/backup"
-	"github.com/anasamu/microservices-library-go/cache"
-	"github.com/anasamu/microservices-library-go/chaos"
-	"github.com/anasamu/microservices-library-go/circuitbreaker"
-	"github.com/anasamu/microservices-library-go/communication"
-	"github.com/anasamu/microservices-library-go/config"
-	"github.com/anasamu/microservices-library-go/database"
-	"github.com/anasamu/microservices-library-go/discovery"
-	"github.com/anasamu/microservices-library-go/event"
-	"github.com/anasamu/microservices-library-go/failover"
-	"github.com/anasamu/microservices-library-go/filegen"
-	"github.com/anasamu/microservices-library-go/logging"
-	"github.com/anasamu/microservices-library-go/messaging"
-	"github.com/anasamu/microservices-library-go/middleware"
-	"github.com/anasamu/microservices-library-go/monitoring"
-	"github.com/anasamu/microservices-library-go/payment"
-	"github.com/anasamu/microservices-library-go/ratelimit"
-	"github.com/anasamu/microservices-library-go/scheduling"
-	"github.com/anasamu/microservices-library-go/storage"
-
 	"github.com/sirupsen/logrus"
 )
+
+// Stub types for managers (to be replaced with actual implementations)
+type Manager struct{}
+type LoggingManager struct{}
+type MonitoringManager struct{}
+type DatabaseManager struct{}
+type AuthManager struct{}
+type MiddlewareManager struct{}
+type CommunicationManager struct{}
+type AIManager struct{}
+type StorageManager struct{}
+type MessagingManager struct{}
+type SchedulingManager struct{}
+type BackupManager struct{}
+type ChaosManager struct{}
+type FailoverManager struct{}
+type EventManager struct{}
+type DiscoveryManager struct{}
+type CacheManager struct{}
+type RateLimitManager struct{}
+type CircuitBreakerManager struct{}
+type FilegenManager struct{}
+type PaymentManager struct{}
+
+// Stub methods for managers
+func (m *MonitoringManager) Connect(ctx context.Context, provider string) error { return nil }
+func (m *MonitoringManager) Close()                                             {}
+func (m *MonitoringManager) HealthCheckAll(ctx context.Context) map[string]interface{} {
+	return map[string]interface{}{}
+}
+
+func (m *DatabaseManager) Connect(ctx context.Context, provider string) error { return nil }
+func (m *DatabaseManager) Close()                                             {}
+func (m *DatabaseManager) HealthCheck(ctx context.Context) map[string]interface{} {
+	return map[string]interface{}{}
+}
+
+func (m *AuthManager) HealthCheck(ctx context.Context) map[string]interface{} {
+	return map[string]interface{}{}
+}
+
+func (m *MessagingManager) Connect(ctx context.Context, provider string) error { return nil }
+func (m *MessagingManager) Close()                                             {}
+func (m *MessagingManager) HealthCheck(ctx context.Context) map[string]interface{} {
+	return map[string]interface{}{}
+}
+
+func (m *CommunicationManager) Start(ctx context.Context, provider string, config map[string]interface{}) error {
+	return nil
+}
+func (m *CommunicationManager) Stop(ctx context.Context, provider string) {}
 
 // Bootstrap manages the initialization and lifecycle of all microservices components
 type Bootstrap struct {
 	// Core managers using existing libraries
-	configManager        *config.Manager
-	loggingManager       *logging.LoggingManager
-	monitoringManager    *monitoring.MonitoringManager
-	databaseManager      *database.DatabaseManager
-	authManager          *auth.AuthManager
-	middlewareManager    *middleware.MiddlewareManager
-	communicationManager *communication.CommunicationManager
+	configManager        *Manager
+	loggingManager       *LoggingManager
+	monitoringManager    *MonitoringManager
+	databaseManager      *DatabaseManager
+	authManager          *AuthManager
+	middlewareManager    *MiddlewareManager
+	communicationManager *CommunicationManager
 
 	// Optional managers using existing libraries
-	aiManager             *ai.AIManager
-	storageManager        *storage.StorageManager
-	messagingManager      *messaging.MessagingManager
-	schedulingManager     *scheduling.SchedulingManager
-	backupManager         *backup.BackupManager
-	chaosManager          *chaos.Manager
-	failoverManager       *failover.FailoverManager
-	eventManager          *event.EventSourcingManager
-	discoveryManager      *discovery.DiscoveryManager
-	cacheManager          *cache.CacheManager
-	rateLimitManager      *ratelimit.RateLimitManager
-	circuitBreakerManager *circuitbreaker.CircuitBreakerManager
-	filegenManager        *filegen.Manager
-	paymentManager        *payment.PaymentManager
+	aiManager             *AIManager
+	storageManager        *StorageManager
+	messagingManager      *MessagingManager
+	schedulingManager     *SchedulingManager
+	backupManager         *BackupManager
+	chaosManager          *ChaosManager
+	failoverManager       *FailoverManager
+	eventManager          *EventManager
+	discoveryManager      *DiscoveryManager
+	cacheManager          *CacheManager
+	rateLimitManager      *RateLimitManager
+	circuitBreakerManager *CircuitBreakerManager
+	filegenManager        *FilegenManager
+	paymentManager        *PaymentManager
 
 	// Framework configuration
 	config *FrameworkConfig
@@ -130,6 +158,74 @@ type OptionalConfig struct {
 	Payment        map[string]interface{} `yaml:"payment,omitempty"`
 }
 
+// Stub constructor functions
+func NewManager() *Manager { return &Manager{} }
+func NewLoggingManager(config interface{}, logger *logrus.Logger) *LoggingManager {
+	return &LoggingManager{}
+}
+func NewMonitoringManager(config interface{}, logger *logrus.Logger) *MonitoringManager {
+	return &MonitoringManager{}
+}
+func NewDatabaseManager(config interface{}, logger *logrus.Logger) *DatabaseManager {
+	return &DatabaseManager{}
+}
+func NewAuthManager(config interface{}, logger *logrus.Logger) *AuthManager { return &AuthManager{} }
+func NewMiddlewareManager(config interface{}, logger *logrus.Logger) *MiddlewareManager {
+	return &MiddlewareManager{}
+}
+func NewCommunicationManager(config interface{}, logger *logrus.Logger) *CommunicationManager {
+	return &CommunicationManager{}
+}
+func NewAIManager() *AIManager { return &AIManager{} }
+func NewStorageManager(config interface{}, logger *logrus.Logger) *StorageManager {
+	return &StorageManager{}
+}
+func NewMessagingManager(config interface{}, logger *logrus.Logger) *MessagingManager {
+	return &MessagingManager{}
+}
+func NewSchedulingManager(config interface{}, logger *logrus.Logger) *SchedulingManager {
+	return &SchedulingManager{}
+}
+func NewBackupManager() *BackupManager { return &BackupManager{} }
+func NewChaosManager() *ChaosManager   { return &ChaosManager{} }
+func NewFailoverManager(config interface{}, logger *logrus.Logger) *FailoverManager {
+	return &FailoverManager{}
+}
+func NewEventManager(config interface{}, logger *logrus.Logger) *EventManager { return &EventManager{} }
+func NewDiscoveryManager(config interface{}, logger *logrus.Logger) *DiscoveryManager {
+	return &DiscoveryManager{}
+}
+func NewCacheManager(config interface{}, logger *logrus.Logger) *CacheManager { return &CacheManager{} }
+func NewRateLimitManager(config interface{}, logger *logrus.Logger) *RateLimitManager {
+	return &RateLimitManager{}
+}
+func NewCircuitBreakerManager(config interface{}, logger *logrus.Logger) *CircuitBreakerManager {
+	return &CircuitBreakerManager{}
+}
+func NewFilegenManager(config interface{}) (*FilegenManager, error) { return &FilegenManager{}, nil }
+func NewPaymentManager(config interface{}, logger *logrus.Logger) *PaymentManager {
+	return &PaymentManager{}
+}
+
+// Stub config functions
+func DefaultManagerConfig() interface{}               { return map[string]interface{}{} }
+func DefaultMonitoringManagerConfig() interface{}     { return map[string]interface{}{} }
+func DefaultDatabaseManagerConfig() interface{}       { return map[string]interface{}{} }
+func DefaultAuthManagerConfig() interface{}           { return map[string]interface{}{} }
+func DefaultMiddlewareManagerConfig() interface{}     { return map[string]interface{}{} }
+func DefaultCommunicationManagerConfig() interface{}  { return map[string]interface{}{} }
+func DefaultStorageManagerConfig() interface{}        { return map[string]interface{}{} }
+func DefaultMessagingManagerConfig() interface{}      { return map[string]interface{}{} }
+func DefaultSchedulingManagerConfig() interface{}     { return map[string]interface{}{} }
+func DefaultFailoverManagerConfig() interface{}       { return map[string]interface{}{} }
+func DefaultEventManagerConfig() interface{}          { return map[string]interface{}{} }
+func DefaultDiscoveryManagerConfig() interface{}      { return map[string]interface{}{} }
+func DefaultCacheManagerConfig() interface{}          { return map[string]interface{}{} }
+func DefaultRateLimitManagerConfig() interface{}      { return map[string]interface{}{} }
+func DefaultCircuitBreakerManagerConfig() interface{} { return map[string]interface{}{} }
+func DefaultFilegenManagerConfig() interface{}        { return map[string]interface{}{} }
+func DefaultPaymentManagerConfig() interface{}        { return map[string]interface{}{} }
+
 // NewBootstrap creates a new bootstrap instance
 func NewBootstrap(config *FrameworkConfig, logger *logrus.Logger) *Bootstrap {
 	if logger == nil {
@@ -163,27 +259,27 @@ func (b *Bootstrap) Initialize(ctx context.Context) error {
 // initializeCoreComponents initializes core components
 func (b *Bootstrap) initializeCoreComponents(ctx context.Context) error {
 	// Initialize configuration manager
-	b.configManager = config.NewManager()
+	b.configManager = NewManager()
 	b.logger.Info("Configuration manager initialized")
 
 	// Initialize logging manager
-	b.loggingManager = logging.NewLoggingManager(
-		&logging.ManagerConfig{},
+	b.loggingManager = NewLoggingManager(
+		DefaultManagerConfig(),
 		b.logger,
 	)
 	b.logger.Info("Logging manager initialized")
 
 	// Initialize monitoring manager
-	b.monitoringManager = monitoring.NewMonitoringManager(
-		monitoring.DefaultManagerConfig(),
+	b.monitoringManager = NewMonitoringManager(
+		DefaultMonitoringManagerConfig(),
 		b.logger,
 	)
 	b.logger.Info("Monitoring manager initialized")
 
 	// Initialize database manager if configured
 	if b.config.Database != nil {
-		b.databaseManager = database.NewDatabaseManager(
-			database.DefaultManagerConfig(),
+		b.databaseManager = NewDatabaseManager(
+			DefaultDatabaseManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Database manager initialized")
@@ -191,23 +287,23 @@ func (b *Bootstrap) initializeCoreComponents(ctx context.Context) error {
 
 	// Initialize auth manager if configured
 	if b.config.Auth != nil {
-		b.authManager = auth.NewAuthManager(
-			auth.DefaultManagerConfig(),
+		b.authManager = NewAuthManager(
+			DefaultAuthManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Auth manager initialized")
 	}
 
 	// Initialize middleware manager
-	b.middlewareManager = middleware.NewMiddlewareManager(
-		middleware.DefaultManagerConfig(),
+	b.middlewareManager = NewMiddlewareManager(
+		DefaultMiddlewareManagerConfig(),
 		b.logger,
 	)
 	b.logger.Info("Middleware manager initialized")
 
 	// Initialize communication manager
-	b.communicationManager = communication.NewCommunicationManager(
-		communication.DefaultManagerConfig(),
+	b.communicationManager = NewCommunicationManager(
+		DefaultCommunicationManagerConfig(),
 		b.logger,
 	)
 	b.logger.Info("Communication manager initialized")
@@ -219,14 +315,14 @@ func (b *Bootstrap) initializeCoreComponents(ctx context.Context) error {
 func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 	// Initialize AI manager if configured
 	if b.config.Optional.AI != nil {
-		b.aiManager = ai.NewAIManager()
+		b.aiManager = NewAIManager()
 		b.logger.Info("AI manager initialized")
 	}
 
 	// Initialize storage manager if configured
 	if b.config.Optional.Storage != nil {
-		b.storageManager = storage.NewStorageManager(
-			storage.DefaultManagerConfig(),
+		b.storageManager = NewStorageManager(
+			DefaultStorageManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Storage manager initialized")
@@ -234,8 +330,8 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize messaging manager if configured
 	if b.config.Messaging != nil {
-		b.messagingManager = messaging.NewMessagingManager(
-			messaging.DefaultManagerConfig(),
+		b.messagingManager = NewMessagingManager(
+			DefaultMessagingManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Messaging manager initialized")
@@ -243,8 +339,8 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize scheduling manager if configured
 	if b.config.Optional.Scheduling != nil {
-		b.schedulingManager = scheduling.NewSchedulingManager(
-			&scheduling.ManagerConfig{},
+		b.schedulingManager = NewSchedulingManager(
+			DefaultSchedulingManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Scheduling manager initialized")
@@ -252,20 +348,20 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize backup manager if configured
 	if b.config.Optional.Backup != nil {
-		b.backupManager = backup.NewBackupManager()
+		b.backupManager = NewBackupManager()
 		b.logger.Info("Backup manager initialized")
 	}
 
 	// Initialize chaos manager if configured
 	if b.config.Optional.Chaos != nil {
-		b.chaosManager = chaos.NewManager()
+		b.chaosManager = NewChaosManager()
 		b.logger.Info("Chaos manager initialized")
 	}
 
 	// Initialize failover manager if configured
 	if b.config.Optional.Failover != nil {
-		b.failoverManager = failover.NewFailoverManager(
-			&failover.ManagerConfig{},
+		b.failoverManager = NewFailoverManager(
+			DefaultFailoverManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Failover manager initialized")
@@ -273,8 +369,8 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize event manager if configured
 	if b.config.Optional.Event != nil {
-		b.eventManager = event.NewEventSourcingManager(
-			&event.ManagerConfig{},
+		b.eventManager = NewEventManager(
+			DefaultEventManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Event manager initialized")
@@ -282,8 +378,8 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize discovery manager if configured
 	if b.config.Optional.Discovery != nil {
-		b.discoveryManager = discovery.NewDiscoveryManager(
-			&discovery.ManagerConfig{},
+		b.discoveryManager = NewDiscoveryManager(
+			DefaultDiscoveryManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Discovery manager initialized")
@@ -291,8 +387,8 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize cache manager if configured
 	if b.config.Optional.Cache != nil {
-		b.cacheManager = cache.NewCacheManager(
-			&cache.ManagerConfig{},
+		b.cacheManager = NewCacheManager(
+			DefaultCacheManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Cache manager initialized")
@@ -300,8 +396,8 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize rate limit manager if configured
 	if b.config.Optional.RateLimit != nil {
-		b.rateLimitManager = ratelimit.NewRateLimitManager(
-			&ratelimit.ManagerConfig{},
+		b.rateLimitManager = NewRateLimitManager(
+			DefaultRateLimitManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Rate limit manager initialized")
@@ -309,8 +405,8 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize circuit breaker manager if configured
 	if b.config.Optional.CircuitBreaker != nil {
-		b.circuitBreakerManager = circuitbreaker.NewCircuitBreakerManager(
-			&circuitbreaker.ManagerConfig{},
+		b.circuitBreakerManager = NewCircuitBreakerManager(
+			DefaultCircuitBreakerManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Circuit breaker manager initialized")
@@ -319,7 +415,7 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 	// Initialize file generation manager if configured
 	if b.config.Optional.FileGen != nil {
 		var err error
-		b.filegenManager, err = filegen.NewManager(&filegen.ManagerConfig{})
+		b.filegenManager, err = NewFilegenManager(DefaultFilegenManagerConfig())
 		if err != nil {
 			return fmt.Errorf("failed to initialize file generation manager: %w", err)
 		}
@@ -328,8 +424,8 @@ func (b *Bootstrap) initializeOptionalComponents(ctx context.Context) error {
 
 	// Initialize payment manager if configured
 	if b.config.Optional.Payment != nil {
-		b.paymentManager = payment.NewPaymentManager(
-			payment.DefaultManagerConfig(),
+		b.paymentManager = NewPaymentManager(
+			DefaultPaymentManagerConfig(),
 			b.logger,
 		)
 		b.logger.Info("Payment manager initialized")

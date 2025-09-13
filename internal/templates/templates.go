@@ -144,7 +144,7 @@ config:
       path: "./configs"
       format: "yaml"
     env:
-      prefix: "{{.ServiceName | upper}}_"
+      prefix: "{{.ServiceName}}_"
 
 logging:
   providers:
@@ -1028,7 +1028,7 @@ func TestServiceIntegrationTestSuite(t *testing.T) {
 }
 `
 
-	ReadmeTemplate = "# {{.ServiceName | title}} Service\n\n" +
+	ReadmeTemplate = "# {{.ServiceName}} Service\n\n" +
 		"A microservice built with Go Micro Framework using existing microservices-library-go packages.\n\n" +
 		"## Features\n\n" +
 		"- REST API with Gin framework\n" +
@@ -1106,7 +1106,7 @@ func TestServiceIntegrationTestSuite(t *testing.T) {
 		"## License\n\n" +
 		"MIT License"
 
-	APITemplate = "# {{.ServiceName | title}} API Documentation\n\n" +
+	APITemplate = "# {{.ServiceName}} API Documentation\n\n" +
 		"## Overview\n\n" +
 		"The {{.ServiceName}} service provides REST API endpoints for managing service resources.\n\n" +
 		"## Base URL\n\n" +

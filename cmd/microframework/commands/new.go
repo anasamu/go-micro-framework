@@ -11,23 +11,23 @@ import (
 
 var (
 	serviceType        string
-	withAuth           bool
-	withDatabase       bool
-	withMessaging      bool
-	withMonitoring     bool
-	withAI             bool
-	withStorage        bool
-	withCache          bool
-	withDiscovery      bool
-	withCircuitBreaker bool
-	withRateLimit      bool
-	withChaos          bool
-	withFailover       bool
-	withEvent          bool
-	withScheduling     bool
-	withBackup         bool
-	withPayment        bool
-	withFileGen        bool
+	withAuth           string
+	withDatabase       string
+	withMessaging      string
+	withMonitoring     string
+	withAI             string
+	withStorage        string
+	withCache          string
+	withDiscovery      string
+	withCircuitBreaker string
+	withRateLimit      string
+	withChaos          string
+	withFailover       string
+	withEvent          string
+	withScheduling     string
+	withBackup         string
+	withPayment        string
+	withFileGen        string
 	outputDir          string
 	force              bool
 )
@@ -47,9 +47,9 @@ This command creates a complete microservice project structure including:
 
 Examples:
   microframework new user-service
-  microframework new order-service --with-auth --with-database
-  microframework new notification-service --with-messaging --with-ai
-  microframework new payment-service --with-payment --with-database --with-monitoring`,
+  microframework new order-service --with-auth=jwt --with-database=postgres
+  microframework new notification-service --with-messaging=kafka --with-ai=openai
+  microframework new payment-service --with-payment=stripe --with-database=postgres --with-monitoring=prometheus`,
 	Args: cobra.ExactArgs(1),
 	RunE: runNew,
 }
@@ -59,25 +59,25 @@ func init() {
 	newCmd.Flags().StringVarP(&serviceType, "type", "t", "rest", "Service type (rest, graphql, grpc, websocket, event, scheduled, worker, gateway, proxy)")
 
 	// Core features
-	newCmd.Flags().BoolVar(&withAuth, "with-auth", false, "Include authentication (JWT, OAuth)")
-	newCmd.Flags().BoolVar(&withDatabase, "with-database", false, "Include database (PostgreSQL, Redis)")
-	newCmd.Flags().BoolVar(&withMessaging, "with-messaging", false, "Include messaging (Kafka, RabbitMQ)")
-	newCmd.Flags().BoolVar(&withMonitoring, "with-monitoring", false, "Include monitoring (Prometheus, Jaeger, Grafana)")
+	newCmd.Flags().StringVar(&withAuth, "with-auth", "", "Include authentication (jwt, oauth, ldap, saml)")
+	newCmd.Flags().StringVar(&withDatabase, "with-database", "", "Include database (postgres, mysql, redis, mongodb)")
+	newCmd.Flags().StringVar(&withMessaging, "with-messaging", "", "Include messaging (kafka, rabbitmq, nats)")
+	newCmd.Flags().StringVar(&withMonitoring, "with-monitoring", "", "Include monitoring (prometheus, jaeger, grafana)")
 
 	// Optional features
-	newCmd.Flags().BoolVar(&withAI, "with-ai", false, "Include AI services (OpenAI, Anthropic)")
-	newCmd.Flags().BoolVar(&withStorage, "with-storage", false, "Include storage (S3, GCS)")
-	newCmd.Flags().BoolVar(&withCache, "with-cache", false, "Include caching (Redis, Memory)")
-	newCmd.Flags().BoolVar(&withDiscovery, "with-discovery", false, "Include service discovery (Consul, Kubernetes)")
-	newCmd.Flags().BoolVar(&withCircuitBreaker, "with-circuit-breaker", false, "Include circuit breaker patterns")
-	newCmd.Flags().BoolVar(&withRateLimit, "with-rate-limit", false, "Include rate limiting")
-	newCmd.Flags().BoolVar(&withChaos, "with-chaos", false, "Include chaos engineering")
-	newCmd.Flags().BoolVar(&withFailover, "with-failover", false, "Include failover mechanisms")
-	newCmd.Flags().BoolVar(&withEvent, "with-event", false, "Include event sourcing")
-	newCmd.Flags().BoolVar(&withScheduling, "with-scheduling", false, "Include task scheduling")
-	newCmd.Flags().BoolVar(&withBackup, "with-backup", false, "Include backup services")
-	newCmd.Flags().BoolVar(&withPayment, "with-payment", false, "Include payment processing")
-	newCmd.Flags().BoolVar(&withFileGen, "with-filegen", false, "Include file generation")
+	newCmd.Flags().StringVar(&withAI, "with-ai", "", "Include AI services (openai, anthropic, google)")
+	newCmd.Flags().StringVar(&withStorage, "with-storage", "", "Include storage (s3, gcs, azure)")
+	newCmd.Flags().StringVar(&withCache, "with-cache", "", "Include caching (redis, memcached, memory)")
+	newCmd.Flags().StringVar(&withDiscovery, "with-discovery", "", "Include service discovery (consul, kubernetes)")
+	newCmd.Flags().StringVar(&withCircuitBreaker, "with-circuit-breaker", "", "Include circuit breaker patterns")
+	newCmd.Flags().StringVar(&withRateLimit, "with-rate-limit", "", "Include rate limiting")
+	newCmd.Flags().StringVar(&withChaos, "with-chaos", "", "Include chaos engineering")
+	newCmd.Flags().StringVar(&withFailover, "with-failover", "", "Include failover mechanisms")
+	newCmd.Flags().StringVar(&withEvent, "with-event", "", "Include event sourcing")
+	newCmd.Flags().StringVar(&withScheduling, "with-scheduling", "", "Include task scheduling")
+	newCmd.Flags().StringVar(&withBackup, "with-backup", "", "Include backup services")
+	newCmd.Flags().StringVar(&withPayment, "with-payment", "", "Include payment processing")
+	newCmd.Flags().StringVar(&withFileGen, "with-filegen", "", "Include file generation")
 
 	// Output options
 	newCmd.Flags().StringVarP(&outputDir, "output", "o", ".", "Output directory for the generated service")
@@ -104,24 +104,34 @@ func runNew(cmd *cobra.Command, args []string) error {
 	config := &generator.GeneratorConfig{
 		ServiceName:        serviceName,
 		ServiceType:        serviceType,
-		WithAuth:           withAuth,
-		WithDatabase:       withDatabase,
-		WithMessaging:      withMessaging,
-		WithMonitoring:     withMonitoring,
-		WithAI:             withAI,
-		WithStorage:        withStorage,
-		WithCache:          withCache,
-		WithDiscovery:      withDiscovery,
-		WithCircuitBreaker: withCircuitBreaker,
-		WithRateLimit:      withRateLimit,
-		WithChaos:          withChaos,
-		WithFailover:       withFailover,
-		WithEvent:          withEvent,
-		WithScheduling:     withScheduling,
-		WithBackup:         withBackup,
-		WithPayment:        withPayment,
-		WithFileGen:        withFileGen,
+		WithAuth:           withAuth != "",
+		WithDatabase:       withDatabase != "",
+		WithMessaging:      withMessaging != "",
+		WithMonitoring:     withMonitoring != "",
+		WithAI:             withAI != "",
+		WithStorage:        withStorage != "",
+		WithCache:          withCache != "",
+		WithDiscovery:      withDiscovery != "",
+		WithCircuitBreaker: withCircuitBreaker != "",
+		WithRateLimit:      withRateLimit != "",
+		WithChaos:          withChaos != "",
+		WithFailover:       withFailover != "",
+		WithEvent:          withEvent != "",
+		WithScheduling:     withScheduling != "",
+		WithBackup:         withBackup != "",
+		WithPayment:        withPayment != "",
+		WithFileGen:        withFileGen != "",
 		OutputDir:          outputDir,
+		// Provider specifications
+		AuthProvider:       withAuth,
+		DatabaseProvider:   withDatabase,
+		MessagingProvider:  withMessaging,
+		MonitoringProvider: withMonitoring,
+		AIProvider:         withAI,
+		StorageProvider:    withStorage,
+		CacheProvider:      withCache,
+		DiscoveryProvider:  withDiscovery,
+		PaymentProvider:    withPayment,
 	}
 
 	// Create service generator
@@ -132,56 +142,56 @@ func runNew(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Service type: %s\n", serviceType)
 	fmt.Printf("Output directory: %s\n", fullOutputDir)
 
-	if withAuth {
-		fmt.Println("✓ Authentication enabled")
+	if withAuth != "" {
+		fmt.Printf("✓ Authentication enabled (%s)\n", withAuth)
 	}
-	if withDatabase {
-		fmt.Println("✓ Database integration enabled")
+	if withDatabase != "" {
+		fmt.Printf("✓ Database integration enabled (%s)\n", withDatabase)
 	}
-	if withMessaging {
-		fmt.Println("✓ Messaging enabled")
+	if withMessaging != "" {
+		fmt.Printf("✓ Messaging enabled (%s)\n", withMessaging)
 	}
-	if withMonitoring {
-		fmt.Println("✓ Monitoring enabled")
+	if withMonitoring != "" {
+		fmt.Printf("✓ Monitoring enabled (%s)\n", withMonitoring)
 	}
-	if withAI {
-		fmt.Println("✓ AI services enabled")
+	if withAI != "" {
+		fmt.Printf("✓ AI services enabled (%s)\n", withAI)
 	}
-	if withStorage {
-		fmt.Println("✓ Storage enabled")
+	if withStorage != "" {
+		fmt.Printf("✓ Storage enabled (%s)\n", withStorage)
 	}
-	if withCache {
-		fmt.Println("✓ Caching enabled")
+	if withCache != "" {
+		fmt.Printf("✓ Caching enabled (%s)\n", withCache)
 	}
-	if withDiscovery {
-		fmt.Println("✓ Service discovery enabled")
+	if withDiscovery != "" {
+		fmt.Printf("✓ Service discovery enabled (%s)\n", withDiscovery)
 	}
-	if withCircuitBreaker {
-		fmt.Println("✓ Circuit breaker enabled")
+	if withCircuitBreaker != "" {
+		fmt.Printf("✓ Circuit breaker enabled (%s)\n", withCircuitBreaker)
 	}
-	if withRateLimit {
-		fmt.Println("✓ Rate limiting enabled")
+	if withRateLimit != "" {
+		fmt.Printf("✓ Rate limiting enabled (%s)\n", withRateLimit)
 	}
-	if withChaos {
-		fmt.Println("✓ Chaos engineering enabled")
+	if withChaos != "" {
+		fmt.Printf("✓ Chaos engineering enabled (%s)\n", withChaos)
 	}
-	if withFailover {
-		fmt.Println("✓ Failover enabled")
+	if withFailover != "" {
+		fmt.Printf("✓ Failover enabled (%s)\n", withFailover)
 	}
-	if withEvent {
-		fmt.Println("✓ Event sourcing enabled")
+	if withEvent != "" {
+		fmt.Printf("✓ Event sourcing enabled (%s)\n", withEvent)
 	}
-	if withScheduling {
-		fmt.Println("✓ Task scheduling enabled")
+	if withScheduling != "" {
+		fmt.Printf("✓ Task scheduling enabled (%s)\n", withScheduling)
 	}
-	if withBackup {
-		fmt.Println("✓ Backup services enabled")
+	if withBackup != "" {
+		fmt.Printf("✓ Backup services enabled (%s)\n", withBackup)
 	}
-	if withPayment {
-		fmt.Println("✓ Payment processing enabled")
+	if withPayment != "" {
+		fmt.Printf("✓ Payment processing enabled (%s)\n", withPayment)
 	}
-	if withFileGen {
-		fmt.Println("✓ File generation enabled")
+	if withFileGen != "" {
+		fmt.Printf("✓ File generation enabled (%s)\n", withFileGen)
 	}
 
 	fmt.Println("\nGenerating service structure...")

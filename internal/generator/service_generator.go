@@ -37,6 +37,16 @@ type GeneratorConfig struct {
 	WithPayment        bool
 	WithFileGen        bool
 	OutputDir          string
+	// Provider specifications
+	AuthProvider       string
+	DatabaseProvider   string
+	MessagingProvider  string
+	MonitoringProvider string
+	AIProvider         string
+	StorageProvider    string
+	CacheProvider      string
+	DiscoveryProvider  string
+	PaymentProvider    string
 }
 
 // NewServiceGenerator creates a new service generator
