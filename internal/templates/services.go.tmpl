@@ -7,24 +7,27 @@ import (
 	"{{.ServiceName}}/internal/models"
 	"{{.ServiceName}}/internal/repositories"
 
-	"github.com/anasamu/microservices-library-go/auth"
-	"github.com/anasamu/microservices-library-go/database"
+	"github.com/anasamu/go-micro-libs"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // Service handles business logic operations
 type Service struct {
-	userRepo    *repositories.UserRepository
-	authManager *auth.AuthManager
+	userRepo      *repositories.UserRepository
+	authManager   *microservices.AuthManager
+	apiManager    *microservices.APIManager
+	emailManager  *microservices.EmailManager
 }
 
 // NewService creates a new service instance
-func NewService(repo *repositories.Repository, authManager *auth.AuthManager) *Service {
+func NewService(repo *repositories.Repository, authManager *microservices.AuthManager, apiManager *microservices.APIManager, emailManager *microservices.EmailManager) *Service {
 	userRepo := repositories.NewUserRepository(repo)
 	
 	return &Service{
-		userRepo:    userRepo,
-		authManager: authManager,
+		userRepo:     userRepo,
+		authManager:  authManager,
+		apiManager:   apiManager,
+		emailManager: emailManager,
 	}
 }
 
@@ -277,7 +280,7 @@ func NewAuthService(service *Service) *AuthService {
 }
 
 // Authenticate authenticates a user
-func (as *AuthService) Authenticate(ctx context.Context, req *models.LoginRequest) (*auth.AuthResponse, error) {
+func (as *AuthService) Authenticate(ctx context.Context, req *models.LoginRequest) (*microservices.AuthResponse, error) {
 	// Get user by username
 	user, err := as.userRepo.GetUserByUsername(ctx, req.Username)
 	if err != nil {
@@ -294,8 +297,8 @@ func (as *AuthService) Authenticate(ctx context.Context, req *models.LoginReques
 		return nil, errors.New("user account is inactive")
 	}
 
-	// Use existing auth library
-	authReq := &auth.AuthRequest{
+	// Use go-micro-libs auth library
+	authReq := &microservices.AuthRequest{
 		Username: req.Username,
 		Password: req.Password,
 	}
@@ -309,9 +312,9 @@ func (as *AuthService) Authenticate(ctx context.Context, req *models.LoginReques
 }
 
 // ValidateToken validates a JWT token
-func (as *AuthService) ValidateToken(ctx context.Context, token string) (*auth.TokenValidationResponse, error) {
-	// Use existing auth library
-	validateReq := &auth.TokenValidationRequest{
+func (as *AuthService) ValidateToken(ctx context.Context, token string) (*microservices.TokenValidationResponse, error) {
+	// Use go-micro-libs auth library
+	validateReq := &microservices.TokenValidationRequest{
 		Token: token,
 	}
 
@@ -324,9 +327,9 @@ func (as *AuthService) ValidateToken(ctx context.Context, token string) (*auth.T
 }
 
 // RefreshToken refreshes a JWT token
-func (as *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*auth.AuthResponse, error) {
-	// Use existing auth library
-	refreshReq := &auth.RefreshTokenRequest{
+func (as *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*microservices.AuthResponse, error) {
+	// Use go-micro-libs auth library
+	refreshReq := &microservices.RefreshTokenRequest{
 		RefreshToken: refreshToken,
 	}
 
@@ -340,8 +343,8 @@ func (as *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*
 
 // RevokeToken revokes a JWT token
 func (as *AuthService) RevokeToken(ctx context.Context, token string) error {
-	// Use existing auth library
-	revokeReq := &auth.RevokeTokenRequest{
+	// Use go-micro-libs auth library
+	revokeReq := &microservices.RevokeTokenRequest{
 		Token: token,
 	}
 
@@ -355,8 +358,8 @@ func (as *AuthService) RevokeToken(ctx context.Context, token string) error {
 
 // Authorize checks if a user is authorized to perform an action
 func (as *AuthService) Authorize(ctx context.Context, userID string, resource string, action string) error {
-	// Use existing auth library
-	authorizeReq := &auth.AuthorizeRequest{
+	// Use go-micro-libs auth library
+	authorizeReq := &microservices.AuthorizeRequest{
 		UserID:   userID,
 		Resource: resource,
 		Action:   action,
@@ -372,8 +375,8 @@ func (as *AuthService) Authorize(ctx context.Context, userID string, resource st
 
 // CheckPermission checks if a user has a specific permission
 func (as *AuthService) CheckPermission(ctx context.Context, userID string, permission string) error {
-	// Use existing auth library
-	permissionReq := &auth.CheckPermissionRequest{
+	// Use go-micro-libs auth library
+	permissionReq := &microservices.CheckPermissionRequest{
 		UserID:     userID,
 		Permission: permission,
 	}
@@ -384,6 +387,208 @@ func (as *AuthService) CheckPermission(ctx context.Context, userID string, permi
 	}
 
 	return nil
+}
+
+{{- end}}
+
+{{- if .WithAPI}}
+
+// APIService handles API thirdparty integration
+type APIService struct {
+	*Service
+}
+
+// NewAPIService creates a new API service
+func NewAPIService(service *Service) *APIService {
+	return &APIService{Service: service}
+}
+
+// SendHTTPRequest sends an HTTP request using the API manager
+func (as *APIService) SendHTTPRequest(ctx context.Context, method, url string, headers map[string]string, body interface{}) (*microservices.APIResponse, error) {
+	// Create API request
+	apiReq := &microservices.APIRequest{
+		Method:  method,
+		URL:     url,
+		Headers: headers,
+		Body:    body,
+	}
+
+	// Send request using API manager
+	response, err := as.apiManager.SendRequest(ctx, "http", apiReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// SendGraphQLRequest sends a GraphQL request using the API manager
+func (as *APIService) SendGraphQLRequest(ctx context.Context, query string, variables map[string]interface{}) (*microservices.GraphQLResponse, error) {
+	// Create GraphQL request
+	graphqlReq := &microservices.GraphQLRequest{
+		Query:     query,
+		Variables: variables,
+	}
+
+	// Send request using API manager
+	response, err := as.apiManager.SendGraphQLRequest(ctx, "graphql", graphqlReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// SendgRPCRequest sends a gRPC request using the API manager
+func (as *APIService) SendgRPCRequest(ctx context.Context, service, method string, data interface{}) (*microservices.GRPCResponse, error) {
+	// Create gRPC request
+	grpcReq := &microservices.GRPCRequest{
+		Service: service,
+		Method:  method,
+		Data:    data,
+	}
+
+	// Send request using API manager
+	response, err := as.apiManager.SendgRPCRequest(ctx, "grpc", grpcReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// ConnectWebSocket connects to a WebSocket using the API manager
+func (as *APIService) ConnectWebSocket(ctx context.Context, url string, headers map[string]string) (*microservices.WebSocketResponse, error) {
+	// Create WebSocket request
+	wsReq := &microservices.WebSocketRequest{
+		URL:     url,
+		Headers: headers,
+	}
+
+	// Connect using API manager
+	response, err := as.apiManager.ConnectWebSocket(ctx, "websocket", wsReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+{{- end}}
+
+{{- if .WithEmail}}
+
+// EmailService handles email operations
+type EmailService struct {
+	*Service
+}
+
+// NewEmailService creates a new email service
+func NewEmailService(service *Service) *EmailService {
+	return &EmailService{Service: service}
+}
+
+// SendEmail sends an email using the email manager
+func (es *EmailService) SendEmail(ctx context.Context, to, subject, body string, isHTML bool) (*microservices.SendResponse, error) {
+	// Create email message
+	message := &microservices.EmailMessage{
+		To:      []*microservices.EmailAddress{{Address: to}},
+		Subject: subject,
+		Body:    body,
+		HTMLBody: body,
+	}
+
+	// Create send request
+	sendReq := &microservices.SendRequest{
+		Message: message,
+	}
+
+	// Send email using email manager
+	response, err := es.emailManager.SendEmail(ctx, "smtp", sendReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// SendEmailWithTemplate sends an email using a template
+func (es *EmailService) SendEmailWithTemplate(ctx context.Context, to, templateID string, data map[string]interface{}) (*microservices.SendResponse, error) {
+	// Create email message with template
+	message := &microservices.EmailMessage{
+		To:         []*microservices.EmailAddress{{Address: to}},
+		TemplateID: templateID,
+		Data:       data,
+	}
+
+	// Create send request
+	sendReq := &microservices.SendRequest{
+		Message: message,
+	}
+
+	// Send email using email manager
+	response, err := es.emailManager.SendEmail(ctx, "smtp", sendReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// SendBatchEmails sends multiple emails
+func (es *EmailService) SendBatchEmails(ctx context.Context, emails []*microservices.EmailMessage) (*microservices.SendBatchResponse, error) {
+	// Create batch request
+	batchReq := &microservices.SendBatchRequest{
+		Messages: emails,
+	}
+
+	// Send batch emails using email manager
+	response, err := es.emailManager.SendBatch(ctx, "smtp", batchReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// CreateEmailTemplate creates an email template
+func (es *EmailService) CreateEmailTemplate(ctx context.Context, templateID, name, subject, body string) error {
+	// Create template
+	template := &microservices.Template{
+		ID:      templateID,
+		Name:    name,
+		Subject: subject,
+		Body:    body,
+	}
+
+	// Create template request
+	templateReq := &microservices.CreateTemplateRequest{
+		Template: template,
+	}
+
+	// Create template using email manager
+	err := es.emailManager.CreateTemplate(ctx, "smtp", templateReq)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetEmailTemplate retrieves an email template
+func (es *EmailService) GetEmailTemplate(ctx context.Context, templateID string) (*microservices.Template, error) {
+	// Create get template request
+	getReq := &microservices.GetTemplateRequest{
+		ID: templateID,
+	}
+
+	// Get template using email manager
+	template, err := es.emailManager.GetTemplate(ctx, "smtp", getReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return template, nil
 }
 
 {{- end}}

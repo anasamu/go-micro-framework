@@ -18,7 +18,7 @@ var rootCmd = &cobra.Command{
 	Use:   "microframework",
 	Short: "Go Micro Framework - CLI tool for microservices development",
 	Long: `Go Micro Framework is a powerful CLI tool that simplifies microservices development
-by integrating the microservices-library-go libraries.
+by integrating the go-micro-libs library.
 
 This tool allows you to:
 - Generate new microservices with predefined structures

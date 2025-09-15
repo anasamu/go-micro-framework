@@ -1,0 +1,229 @@
+package handlers
+
+import (
+	"context"
+	"time"
+
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	// Generated protobuf files
+	pb "{{.ServiceName}}/protobuf"
+	
+	// Generated services
+	"{{.ServiceName}}/internal/services"
+)
+
+// {{.ServiceName}}Handler handles gRPC requests for {{.ServiceName}}
+type {{.ServiceName}}Handler struct {
+	pb.Unimplemented{{.ServiceName}}ServiceServer
+	service *services.{{.ServiceName}}Service
+	logger  *logrus.Logger
+}
+
+// New{{.ServiceName}}Handler creates a new {{.ServiceName}} handler
+func New{{.ServiceName}}Handler(service *services.{{.ServiceName}}Service, logger *logrus.Logger) *{{.ServiceName}}Handler {
+	return &{{.ServiceName}}Handler{
+		service: service,
+		logger:  logger,
+	}
+}
+
+// HealthCheck implements the health check gRPC method
+func (h *{{.ServiceName}}Handler) HealthCheck(ctx context.Context, req *pb.HealthCheckRequest) (*pb.HealthResponse, error) {
+	h.logger.Info("Health check requested")
+	
+	return &pb.HealthResponse{
+		Status:    "healthy",
+		Message:   "{{.ServiceName}} service is running",
+		Timestamp: timestamppb.New(time.Now()),
+	}, nil
+}
+
+// GetServiceInfo implements the service info gRPC method
+func (h *{{.ServiceName}}Handler) GetServiceInfo(ctx context.Context, req *pb.GetServiceInfoRequest) (*pb.ServiceInfoResponse, error) {
+	h.logger.Info("Service info requested")
+	
+	return &pb.ServiceInfoResponse{
+		Name:        "{{.ServiceName}}",
+		Version:     "1.0.0",
+		Description: "{{.ServiceName}} microservice",
+		StartedAt:   timestamppb.New(time.Now()),
+	}, nil
+}
+
+// Create{{.ServiceName}} implements the create {{.ServiceName}} gRPC method
+func (h *{{.ServiceName}}Handler) Create{{.ServiceName}}(ctx context.Context, req *pb.Create{{.ServiceName}}Request) (*pb.{{.ServiceName}}Response, error) {
+	h.logger.WithFields(logrus.Fields{
+		"name":        req.Name,
+		"description": req.Description,
+	}).Info("Create {{.ServiceName}} requested")
+	
+	// Validate request
+	if req.Name == "" {
+		return nil, status.Error(codes.InvalidArgument, "name is required")
+	}
+	
+	// Create {{.ServiceName}} using service
+	{{.ServiceName | lower}}, err := h.service.Create{{.ServiceName}}(ctx, req.Name, req.Description)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to create {{.ServiceName}}")
+		return nil, status.Error(codes.Internal, "failed to create {{.ServiceName}}")
+	}
+	
+	// Convert to protobuf response
+	pb{{.ServiceName}} := &pb.{{.ServiceName}}{
+		Id:          {{.ServiceName | lower}}.ID,
+		Name:        {{.ServiceName | lower}}.Name,
+		Description: {{.ServiceName | lower}}.Description,
+		CreatedAt:   timestamppb.New({{.ServiceName | lower}}.CreatedAt),
+		UpdatedAt:   timestamppb.New({{.ServiceName | lower}}.UpdatedAt),
+	}
+	
+	return &pb.{{.ServiceName}}Response{
+		{{.ServiceName | lower}}: pb{{.ServiceName}},
+		Message: "{{.ServiceName}} created successfully",
+		Success: true,
+	}, nil
+}
+
+// Get{{.ServiceName}} implements the get {{.ServiceName}} gRPC method
+func (h *{{.ServiceName}}Handler) Get{{.ServiceName}}(ctx context.Context, req *pb.Get{{.ServiceName}}Request) (*pb.{{.ServiceName}}Response, error) {
+	h.logger.WithField("id", req.Id).Info("Get {{.ServiceName}} requested")
+	
+	// Validate request
+	if req.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	
+	// Get {{.ServiceName}} using service
+	{{.ServiceName | lower}}, err := h.service.Get{{.ServiceName}}(ctx, req.Id)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get {{.ServiceName}}")
+		return nil, status.Error(codes.NotFound, "{{.ServiceName}} not found")
+	}
+	
+	// Convert to protobuf response
+	pb{{.ServiceName}} := &pb.{{.ServiceName}}{
+		Id:          {{.ServiceName | lower}}.ID,
+		Name:        {{.ServiceName | lower}}.Name,
+		Description: {{.ServiceName | lower}}.Description,
+		CreatedAt:   timestamppb.New({{.ServiceName | lower}}.CreatedAt),
+		UpdatedAt:   timestamppb.New({{.ServiceName | lower}}.UpdatedAt),
+	}
+	
+	return &pb.{{.ServiceName}}Response{
+		{{.ServiceName | lower}}: pb{{.ServiceName}},
+		Message: "{{.ServiceName}} retrieved successfully",
+		Success: true,
+	}, nil
+}
+
+// Update{{.ServiceName}} implements the update {{.ServiceName}} gRPC method
+func (h *{{.ServiceName}}Handler) Update{{.ServiceName}}(ctx context.Context, req *pb.Update{{.ServiceName}}Request) (*pb.{{.ServiceName}}Response, error) {
+	h.logger.WithFields(logrus.Fields{
+		"id":          req.Id,
+		"name":        req.Name,
+		"description": req.Description,
+	}).Info("Update {{.ServiceName}} requested")
+	
+	// Validate request
+	if req.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	
+	// Update {{.ServiceName}} using service
+	{{.ServiceName | lower}}, err := h.service.Update{{.ServiceName}}(ctx, req.Id, req.Name, req.Description)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to update {{.ServiceName}}")
+		return nil, status.Error(codes.Internal, "failed to update {{.ServiceName}}")
+	}
+	
+	// Convert to protobuf response
+	pb{{.ServiceName}} := &pb.{{.ServiceName}}{
+		Id:          {{.ServiceName | lower}}.ID,
+		Name:        {{.ServiceName | lower}}.Name,
+		Description: {{.ServiceName | lower}}.Description,
+		CreatedAt:   timestamppb.New({{.ServiceName | lower}}.CreatedAt),
+		UpdatedAt:   timestamppb.New({{.ServiceName | lower}}.UpdatedAt),
+	}
+	
+	return &pb.{{.ServiceName}}Response{
+		{{.ServiceName | lower}}: pb{{.ServiceName}},
+		Message: "{{.ServiceName}} updated successfully",
+		Success: true,
+	}, nil
+}
+
+// Delete{{.ServiceName}} implements the delete {{.ServiceName}} gRPC method
+func (h *{{.ServiceName}}Handler) Delete{{.ServiceName}}(ctx context.Context, req *pb.Delete{{.ServiceName}}Request) (*pb.Delete{{.ServiceName}}Response, error) {
+	h.logger.WithField("id", req.Id).Info("Delete {{.ServiceName}} requested")
+	
+	// Validate request
+	if req.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	
+	// Delete {{.ServiceName}} using service
+	err := h.service.Delete{{.ServiceName}}(ctx, req.Id)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to delete {{.ServiceName}}")
+		return nil, status.Error(codes.Internal, "failed to delete {{.ServiceName}}")
+	}
+	
+	return &pb.Delete{{.ServiceName}}Response{
+		Message: "{{.ServiceName}} deleted successfully",
+		Success: true,
+	}, nil
+}
+
+// List{{.ServiceName}}s implements the list {{.ServiceName}}s gRPC method
+func (h *{{.ServiceName}}Handler) List{{.ServiceName}}s(ctx context.Context, req *pb.List{{.ServiceName}}sRequest) (*pb.List{{.ServiceName}}sResponse, error) {
+	h.logger.WithFields(logrus.Fields{
+		"page":   req.Page,
+		"limit":  req.Limit,
+		"search": req.Search,
+	}).Info("List {{.ServiceName}}s requested")
+	
+	// Set default values
+	page := req.Page
+	if page <= 0 {
+		page = 1
+	}
+	
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 10
+	}
+	
+	// List {{.ServiceName}}s using service
+	{{.ServiceName | lower}}s, total, err := h.service.List{{.ServiceName}}s(ctx, page, limit, req.Search)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to list {{.ServiceName}}s")
+		return nil, status.Error(codes.Internal, "failed to list {{.ServiceName}}s")
+	}
+	
+	// Convert to protobuf response
+	pb{{.ServiceName}}s := make([]*pb.{{.ServiceName}}, 0, len({{.ServiceName | lower}}s))
+	for _, {{.ServiceName | lower}} := range {{.ServiceName | lower}}s {
+		pb{{.ServiceName}} := &pb.{{.ServiceName}}{
+			Id:          {{.ServiceName | lower}}.ID,
+			Name:        {{.ServiceName | lower}}.Name,
+			Description: {{.ServiceName | lower}}.Description,
+			CreatedAt:   timestamppb.New({{.ServiceName | lower}}.CreatedAt),
+			UpdatedAt:   timestamppb.New({{.ServiceName | lower}}.UpdatedAt),
+		}
+		pb{{.ServiceName}}s = append(pb{{.ServiceName}}s, pb{{.ServiceName}})
+	}
+	
+	return &pb.List{{.ServiceName}}sResponse{
+		{{.ServiceName | lower}}s: pb{{.ServiceName}}s,
+		Total:   int32(total),
+		Page:    int32(page),
+		Limit:   int32(limit),
+		Message: "{{.ServiceName}}s retrieved successfully",
+		Success: true,
+	}, nil
+}

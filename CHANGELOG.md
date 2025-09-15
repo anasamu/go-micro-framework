@@ -8,11 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- TBD
+
+### Changed
+- TBD
+
+### Deprecated
+- TBD
+
+### Removed
+- TBD
+
+### Fixed
+- TBD
+
+### Security
+- TBD
+
+## [1.0.0] - 2025-09-15
+
+### Added
 - Initial framework structure and architecture
 - CLI tool with comprehensive command set
 - Service generation with template system
 - Bootstrap engine for library integration
-- Support for all microservices-library-go modules
+- Support for all go-micro-libs modules
 - Docker and Kubernetes deployment templates
 - Comprehensive documentation and examples
 
@@ -38,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is the first stable release of Go Micro Framework. This release includes:
 
 - **Complete Framework**: Full-featured framework for microservices development
-- **Library Integration**: Seamless integration with all 20+ libraries from [microservices-library-go](https://github.com/anasamu/microservices-library-go/)
+- **Library Integration**: Seamless integration with all 20+ libraries from [go-micro-libs](https://github.com/anasamu/go-micro-libs/)
 - **CLI Tool**: Comprehensive command-line interface for service management
 - **Service Generation**: Generate production-ready microservices with a single command
 - **Deployment Ready**: Built-in support for Docker, Kubernetes, and cloud deployment

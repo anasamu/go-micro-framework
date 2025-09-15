@@ -36,6 +36,8 @@ type GeneratorConfig struct {
 	WithBackup         bool
 	WithPayment        bool
 	WithFileGen        bool
+	WithAPI            bool
+	WithEmail          bool
 	OutputDir          string
 	// Provider specifications
 	AuthProvider       string
@@ -47,6 +49,8 @@ type GeneratorConfig struct {
 	CacheProvider      string
 	DiscoveryProvider  string
 	PaymentProvider    string
+	APIProvider        string
+	EmailProvider      string
 }
 
 // NewServiceGenerator creates a new service generator
@@ -104,6 +108,16 @@ func (sg *ServiceGenerator) GenerateService() error {
 		return fmt.Errorf("failed to generate middleware: %w", err)
 	}
 
+	// Generate utils
+	if err := sg.generateUtils(); err != nil {
+		return fmt.Errorf("failed to generate utils: %w", err)
+	}
+
+	// Generate .env.example
+	if err := sg.generateEnvExample(); err != nil {
+		return fmt.Errorf("failed to generate .env.example: %w", err)
+	}
+
 	// Generate Docker files
 	if err := sg.generateDocker(); err != nil {
 		return fmt.Errorf("failed to generate Docker files: %w", err)
@@ -124,6 +138,13 @@ func (sg *ServiceGenerator) GenerateService() error {
 		return fmt.Errorf("failed to generate documentation: %w", err)
 	}
 
+	// Generate initial migration if database is enabled
+	if sg.config.WithDatabase {
+		if err := sg.generateInitialMigration(); err != nil {
+			return fmt.Errorf("failed to generate initial migration: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -138,8 +159,10 @@ func (sg *ServiceGenerator) createProjectStructure() error {
 		"internal/repositories",
 		"internal/services",
 		"internal/middleware",
+		"internal/utils",
 		"pkg/types",
 		"configs",
+		"migrations",
 		"deployments/docker",
 		"deployments/kubernetes",
 		"deployments/helm",
@@ -260,6 +283,28 @@ func (sg *ServiceGenerator) generateMiddleware() error {
 	return sg.writeTemplate(tmpl, outputPath, sg.config)
 }
 
+// generateUtils generates utility components
+func (sg *ServiceGenerator) generateUtils() error {
+	tmpl, err := template.New("utils.go").Parse(templates.UtilsTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse utils template: %w", err)
+	}
+
+	outputPath := filepath.Join(sg.config.OutputDir, sg.config.ServiceName, "internal", "utils", "utils.go")
+	return sg.writeTemplate(tmpl, outputPath, sg.config)
+}
+
+// generateEnvExample generates .env.example file
+func (sg *ServiceGenerator) generateEnvExample() error {
+	tmpl, err := template.New(".env.example").Parse(templates.EnvExampleTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse .env.example template: %w", err)
+	}
+
+	outputPath := filepath.Join(sg.config.OutputDir, sg.config.ServiceName, ".env.example")
+	return sg.writeTemplate(tmpl, outputPath, sg.config)
+}
+
 // generateDocker generates Docker-related files
 func (sg *ServiceGenerator) generateDocker() error {
 	// Generate Dockerfile
@@ -361,6 +406,30 @@ func (sg *ServiceGenerator) generateDocumentation() error {
 
 	outputPath = filepath.Join(sg.config.OutputDir, sg.config.ServiceName, "docs", "API.md")
 	return sg.writeTemplate(tmpl, outputPath, sg.config)
+}
+
+// generateInitialMigration generates an initial migration file
+func (sg *ServiceGenerator) generateInitialMigration() error {
+	tmpl, err := template.New("migration_example.json.tmpl").Parse(templates.MigrationExampleTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse migration template: %w", err)
+	}
+
+	// Create migration data with timestamp
+	migrationData := struct {
+		ServiceName string
+		Timestamp   string
+		Description string
+		CreatedAt   string
+	}{
+		ServiceName: sg.config.ServiceName,
+		Timestamp:   "20240101000000", // Initial timestamp
+		Description: "Initial database schema",
+		CreatedAt:   "2024-01-01T00:00:00Z",
+	}
+
+	outputPath := filepath.Join(sg.config.OutputDir, sg.config.ServiceName, "migrations", "20240101000000_initial_schema.json")
+	return sg.writeTemplate(tmpl, outputPath, migrationData)
 }
 
 // writeTemplate writes a template to a file

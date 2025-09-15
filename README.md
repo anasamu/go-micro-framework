@@ -1,17 +1,93 @@
 # Go Micro Framework
 
-Framework Go yang powerful untuk pengembangan microservices dengan integrasi seamless dari 20+ library yang sudah ada di [microservices-library-go](https://github.com/anasamu/microservices-library-go/).
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/anasamu/go-micro-framework/releases/tag/v1.0.0)
+[![Go Version](https://img.shields.io/badge/go-1.24.0-blue.svg)](https://golang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/anasamu/go-micro-framework)](https://goreportcard.com/report/github.com/anasamu/go-micro-framework)
+
+Framework Go yang powerful dan user-friendly untuk pengembangan microservices dengan integrasi seamless dari 20+ library yang sudah ada di [go-micro-libs](https://github.com/anasamu/go-micro-libs/). Framework ini dirancang untuk memberikan developer experience yang optimal dengan fokus pada business logic, bukan infrastructure.
+
+## 🎉 Version 1.0.0 Released!
+
+This is the first stable release of Go Micro Framework. This release includes a complete framework for microservices development with seamless integration of all 20+ libraries from go-micro-libs.
 
 ## 🎯 Vision
 
-Mengembangkan framework Go yang powerful dan user-friendly untuk microservices development, dengan integrasi seamless dari semua library ada di [microservices-library-go](https://github.com/anasamu/microservices-library-go/).
+Mengembangkan framework Go yang paling powerful dan user-friendly untuk microservices development, dengan integrasi seamless dari semua library yang sudah ada di [go-micro-libs](https://github.com/anasamu/go-micro-libs/).
 
 ## 🎯 Mission
 
-- **Zero-Configuration Setup**: Framework handle semua konfigurasi default
+- **Zero-Configuration Setup**: Framework menangani semua konfigurasi default
 - **Business Logic Focus**: Developer fokus pada business logic, bukan infrastructure
 - **Production Ready**: Built-in monitoring, logging, security, dan resilience
 - **Extensible**: Mudah menambah fitur baru dan custom providers
+- **Library Integration**: Menggunakan semua library yang sudah ada di go-micro-libs
+
+## 📚 Documentation Navigation
+
+### Core Documentation
+- **[Framework Overview](docs/FRAMEWORK_OVERVIEW.md)** - Comprehensive overview of the framework
+- **[Architecture](docs/ARCHITECTURE.md)** - Detailed architecture documentation
+- **[Library Integration](docs/LIBRARY_INTEGRATION.md)** - Complete library integration guide
+- **[Library Combination](docs/LIBRARY_COMBINATION.md)** - How to combine multiple libraries
+
+### CLI & Commands
+- **[CLI Commands](docs/CLI_COMMANDS.md)** - Complete CLI commands reference
+- **[Service Configuration](docs/SERVICE_CONFIGURATION.md)** - Configuration management guide
+
+### Authentication & Security
+- **[Authentication](docs/AUTHENTICATION.md)** - Authentication implementation guide
+- **[Authorization](docs/AUTHORIZATION.md)** - Authorization and access control
+- **[Middleware](docs/MIDDLEWARE.md)** - Middleware implementation and usage
+
+### Communication & Services
+- **[Service Communication](docs/SERVICE_COMMUNICATION.md)** - Inter-service communication
+- **[gRPC Communication](docs/GRPC_COMMUNICATION.md)** - gRPC implementation guide
+- **[Message Broker Communication](docs/MESSAGE_BROKER_COMMUNICATION.md)** - Message broker integration
+- **[Service Discovery](docs/SERVICE_DISCOVERY.md)** - Service discovery patterns
+
+### Advanced Features
+- **[Circuit Breaker](docs/CIRCUIT_BREAKER.md)** - Circuit breaker implementation
+- **[Failover](docs/FAILOVER.md)** - Failover mechanisms and patterns
+- **[Deployment](docs/DEPLOYMENT.md)** - Deployment strategies and guides
+
+### Development & Maintenance
+- **[API Reference](docs/API.md)** - Complete API documentation
+- **[Common Problems](docs/COMMON_PROBLEMS.md)** - Troubleshooting guide
+- **[Adding Libraries](docs/ADDING_LIBRARIES.md)** - Guide for adding new libraries
+
+## 🔧 Core Libraries (Always Integrated)
+
+Framework ini secara otomatis mengintegrasikan library berikut di setiap service yang dibuat:
+
+| Library | Description | Providers |
+|---------|-------------|-----------|
+| **Config** | Configuration management | File, Env, Consul, Vault |
+| **Logging** | Structured logging | Console, File, Elasticsearch |
+| **Monitoring** | Metrics and tracing | Prometheus, Jaeger, Grafana |
+| **Middleware** | HTTP middleware | Auth, Rate Limit, Circuit Breaker |
+| **Communication** | Communication protocols | HTTP, gRPC, WebSocket, GraphQL |
+| **Utils** | Utility functions | UUID, Environment, Validation |
+
+### Core Library Usage
+
+```go
+// Config management
+configManager := microservices.NewConfigManager()
+configManager.Load()
+
+// Logging
+loggingManager := microservices.NewLoggingManager(config, logger)
+loggingManager.Initialize()
+
+// Monitoring
+monitoringManager := microservices.NewMonitoringManager(config, logger)
+monitoringManager.Start()
+
+// Utils
+utilsManager := utils.NewUtilsManager("service-name")
+serviceID := utilsManager.GetServiceID()
+```
 
 ## 🏗️ Arsitektur Framework
 
@@ -26,7 +102,7 @@ go-micro-framework/
 │   ├── generators/              # Code generation engine
 │   ├── templates/               # Go templates for code gen
 │   └── validators/              # Configuration validation
-├── pkg/                         # Using microservices-library-go package
+├── pkg/                         # Using go-micro-libs package
 ├── templates/                   # Code generation templates
 ├── examples/                    # Generated examples
 ├── docs/                        # Documentation
@@ -75,51 +151,100 @@ microframework config [flags]                 # Manage configuration
 --testing=unit|integration|e2e|benchmark
 ```
 
-## 🔧 Library Integration
+## 📚 Complete Library Integration
 
-Framework ini menggunakan semua library yang sudah ada di [microservices-library-go](https://github.com/anasamu/microservices-library-go/):
+Framework ini mengintegrasikan semua library yang sudah ada di [go-micro-libs](https://github.com/anasamu/go-micro-libs/):
 
-### Core Libraries
-- **AI Services**: OpenAI, Anthropic, Google, DeepSeek, X.AI
-- **Authentication**: JWT, OAuth2, LDAP, SAML, 2FA
-- **Database**: PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch
-- **Monitoring**: Prometheus, Jaeger, Elasticsearch
-- **Logging**: Structured logging dengan correlation IDs
-- **Configuration**: Environment, Files, Consul, Vault
+### Optional Libraries
 
-### Communication Libraries
-- **Messaging**: Kafka, RabbitMQ, NATS, AWS SQS
-- **Discovery**: Consul, Kubernetes, etcd
-- **Communication**: HTTP, gRPC, WebSocket, GraphQL
+| Library | Description | Providers |
+|---------|-------------|-----------|
+| **AI** | AI services | OpenAI, Anthropic, Google, DeepSeek, X.AI |
+| **Auth** | Authentication | JWT, OAuth2, LDAP, SAML, 2FA |
+| **Database** | Database abstraction | PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch |
+| **Cache** | Caching system | Redis, Memcached, Memory |
+| **Storage** | Object storage | S3, GCS, Azure, MinIO |
+| **Messaging** | Message queues | Kafka, RabbitMQ, NATS, SQS |
+| **Discovery** | Service discovery | Consul, Kubernetes, etcd |
+| **Event** | Event sourcing | PostgreSQL, Kafka, NATS |
+| **Payment** | Payment processing | Stripe, PayPal, Midtrans, Xendit |
+| **Backup** | Backup services | S3, GCS, Local |
+| **Chaos** | Chaos engineering | Kubernetes, HTTP, Messaging |
+| **Circuit Breaker** | Resilience patterns | Custom, GoBreaker |
+| **Failover** | Failover mechanisms | Consul, Kubernetes |
+| **FileGen** | File generation | DOCX, Excel, CSV, PDF |
+| **Rate Limit** | Rate limiting | Token bucket, Sliding window |
+| **Scheduling** | Task scheduling | Cron, Redis-based |
+| **API** | Third-party APIs | HTTP, gRPC, GraphQL, WebSocket |
+| **Email** | Email services | SMTP, SendGrid, Mailgun |
 
-### Infrastructure Libraries
-- **Storage**: AWS S3, Google Cloud Storage, Azure Blob, MinIO
-- **Cache**: Redis, Memcached, In-Memory
-- **Backup**: S3, GCS, Local File System
-- **Scheduling**: Cron, Redis-based scheduling
+### Library Usage Examples
 
-### Advanced Libraries
-- **Chaos Engineering**: Kubernetes chaos, HTTP chaos, messaging chaos
-- **Circuit Breaker**: Resilience patterns dengan fallback
-- **Failover**: Automatic failover dengan load balancing
-- **Event Sourcing**: PostgreSQL, Kafka, NATS event stores
+#### AI Services
+```go
+import "github.com/anasamu/go-micro-libs/ai"
 
-### Specialized Libraries
-- **File Generation**: DOCX, Excel, CSV, PDF generation
-- **Payment Processing**: Stripe, PayPal, Midtrans, Xendit
-- **Rate Limiting**: Token bucket, sliding window, leaky bucket
-- **Middleware**: Comprehensive middleware support
+// Initialize AI manager
+aiManager := ai.NewManager()
+
+// Add OpenAI provider
+openaiProvider := openai.NewProvider("your-api-key")
+aiManager.AddProvider(openaiProvider)
+
+// Chat with AI
+response, err := aiManager.Chat(ctx, "openai", chatReq)
+```
+
+#### Database Integration
+```go
+import "github.com/anasamu/go-micro-libs/database"
+
+// Initialize database manager
+dbManager := database.NewManager()
+
+// Add PostgreSQL provider
+postgresProvider := postgresql.NewProvider()
+dbManager.RegisterProvider(postgresProvider)
+
+// Connect and query
+err = dbManager.Connect(ctx, "postgresql")
+result, err := dbManager.Query(ctx, "postgresql", "SELECT * FROM users")
+```
+
+#### Authentication
+```go
+import "github.com/anasamu/go-micro-libs/auth"
+
+// Initialize auth manager
+authManager := auth.NewManager()
+
+// Add JWT provider
+jwtProvider := jwt.NewProvider()
+authManager.RegisterProvider(jwtProvider)
+
+// Generate and validate tokens
+token, err := authManager.GenerateToken("user123", claims)
+claims, err := authManager.ValidateToken(token)
+```
 
 ## 🚀 Quick Start
 
 ### 1. Install CLI Tool
 ```bash
+# Install latest stable version (1.0.0)
+go install github.com/anasamu/go-micro-framework/cmd/microframework@v1.0.0
+
+# Or install latest version
 go install github.com/anasamu/go-micro-framework/cmd/microframework@latest
 ```
 
 ### 2. Generate New Service
 ```bash
-microframework new user-service \
+# Generate basic service (with core libraries automatically integrated)
+microframework new user-service
+
+# Generate service with specific features
+microframework new order-service \
   --type=rest \
   --with-auth=jwt \
   --with-db=postgres \
@@ -130,7 +255,29 @@ microframework new user-service \
   --deployment=docker
 ```
 
-### 3. Run Service
+### 3. Core Libraries Usage
+
+Setiap service yang dibuat sudah memiliki core libraries terintegrasi:
+
+```go
+// Config management
+configManager := microservices.NewConfigManager()
+configManager.Load()
+
+// Logging
+loggingManager := microservices.NewLoggingManager(config, logger)
+loggingManager.Initialize()
+
+// Monitoring
+monitoringManager := microservices.NewMonitoringManager(config, logger)
+monitoringManager.Start()
+
+// Utils
+utilsManager := utils.NewUtilsManager("service-name")
+serviceID := utilsManager.GetServiceID()
+```
+
+### 4. Run Service
 ```bash
 cd user-service
 go run cmd/main.go
@@ -179,6 +326,12 @@ SERVICE_NAME=user-service
 SERVICE_VERSION=1.0.0
 SERVICE_PORT=8080
 
+# Core Libraries (Always Available)
+USER_SERVICE_CONFIG_PATH=./configs
+USER_SERVICE_LOG_LEVEL=info
+USER_SERVICE_PROMETHEUS_ENDPOINT=http://localhost:9090
+USER_SERVICE_JAEGER_ENDPOINT=http://localhost:14268
+
 # Database
 DATABASE_URL=postgres://user:pass@localhost/db
 
@@ -206,6 +359,60 @@ service:
   version: "1.0.0"
   port: 8080
 
+# Core Libraries Configuration (Always Enabled)
+config:
+  providers:
+    file:
+      path: "./configs"
+      format: "yaml"
+    env:
+      prefix: "USER_SERVICE_"
+
+logging:
+  providers:
+    console:
+      level: "info"
+      format: "json"
+    file:
+      path: "/var/log/user-service.log"
+      level: "debug"
+
+monitoring:
+  providers:
+    prometheus:
+      endpoint: "${PROMETHEUS_ENDPOINT}"
+    jaeger:
+      endpoint: "${JAEGER_ENDPOINT}"
+
+middleware:
+  auth:
+    enabled: false
+    provider: "jwt"
+  rate_limit:
+    enabled: true
+    requests_per_minute: 100
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+
+communication:
+  providers:
+    rest:
+      port: 8080
+      timeout: "30s"
+    grpc:
+      port: 9090
+      timeout: "30s"
+
+utils:
+  uuid:
+    version: 4
+    namespace: "user-service"
+  environment:
+    load_env_file: true
+    env_file_path: ".env"
+
+# Optional Libraries (Only if enabled)
 database:
   providers:
     postgresql:
@@ -295,40 +502,117 @@ microframework logs --service=user-service
 
 ## 🛠️ CLI Commands Reference
 
+### Command Overview
+
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `new` | Generate new microservice | `microframework new <service-name> [flags]` |
+| `add` | Add features to existing service | `microframework add <feature> [flags]` |
+| `generate` | Generate specific components | `microframework generate <type> [flags]` |
+| `config` | Manage configuration | `microframework config <subcommand> [flags]` |
+| `deploy` | Deploy service | `microframework deploy [flags]` |
+| `validate` | Validate service | `microframework validate [flags]` |
+| `logs` | View service logs | `microframework logs [flags]` |
+| `health` | Check service health | `microframework health [flags]` |
+| `update` | Update framework | `microframework update [flags]` |
+| `version` | Show version information | `microframework version [flags]` |
+
 ### Core Commands
 
 #### `microframework new` - Generate New Service
+
+Generate a new microservice with specified features and configuration.
+
+**Basic Usage:**
 ```bash
-# Basic REST service
+# Generate basic service (with core libraries automatically integrated)
 microframework new user-service
 
-# REST service with authentication and database
+# Generate service with specific type
+microframework new order-service --type=rest
+
+# Generate service with multiple features
+microframework new payment-service \
+  --type=rest \
+  --with-auth=jwt \
+  --with-database=postgres \
+  --with-cache=redis \
+  --with-monitoring=prometheus
+```
+
+**Available Flags:**
+| Flag | Description | Options | Default |
+|------|-------------|---------|---------|
+| `--type`, `-t` | Service type | `rest`, `graphql`, `grpc`, `websocket`, `event`, `scheduled`, `worker`, `gateway`, `proxy` | `rest` |
+| `--with-auth` | Include authentication | `jwt`, `oauth`, `ldap`, `saml` | - |
+| `--with-database` | Include database | `postgres`, `mysql`, `redis`, `mongodb` | - |
+| `--with-messaging` | Include messaging | `kafka`, `rabbitmq`, `nats` | - |
+| `--with-monitoring` | Include monitoring | `prometheus`, `jaeger`, `grafana` | - |
+| `--with-ai` | Include AI services | `openai`, `anthropic`, `google` | - |
+| `--with-storage` | Include storage | `s3`, `gcs`, `azure` | - |
+| `--with-cache` | Include caching | `redis`, `memcached`, `memory` | - |
+| `--with-discovery` | Include service discovery | `consul`, `kubernetes` | - |
+| `--output`, `-o` | Output directory | Path | `.` |
+| `--force` | Overwrite existing files | - | `false` |
+
+**Examples:**
+```bash
+# REST API with authentication and database
 microframework new user-service \
   --type=rest \
   --with-auth=jwt \
-  --with-database=postgresql \
+  --with-database=postgres \
   --with-cache=redis
 
-# Event-driven service with messaging
+# GraphQL service with AI integration
+microframework new chat-service \
+  --type=graphql \
+  --with-ai=openai \
+  --with-database=postgres \
+  --with-cache=redis
+
+# gRPC service with monitoring
 microframework new order-service \
+  --type=grpc \
+  --with-database=postgres \
+  --with-monitoring=prometheus \
+  --with-messaging=kafka
+
+# Event-driven service
+microframework new event-service \
   --type=event \
+  --with-database=postgres \
   --with-messaging=kafka \
-  --with-database=postgresql \
   --with-event=postgresql
 
-# AI-powered service
-microframework new chat-service \
-  --type=rest \
-  --with-ai=openai \
-  --with-database=postgresql \
-  --with-cache=redis
+# Worker service with scheduling
+microframework new worker-service \
+  --type=worker \
+  --with-messaging=kafka \
+  --with-scheduling=cron \
+  --with-monitoring=prometheus
+
+# API Gateway
+microframework new api-gateway \
+  --type=gateway \
+  --with-auth=jwt \
+  --with-discovery=consul \
+  --with-monitoring=prometheus
 
 # Payment service
 microframework new payment-service \
   --type=rest \
   --with-payment=stripe \
-  --with-database=postgresql \
+  --with-database=postgres \
   --with-monitoring=prometheus
+
+# AI-powered service
+microframework new ai-service \
+  --type=rest \
+  --with-ai=openai \
+  --with-database=postgres \
+  --with-cache=redis \
+  --with-storage=s3
 ```
 
 #### `microframework add` - Add Features
@@ -451,7 +735,7 @@ microframework health --service=user-service --timeout=30s
 microframework update
 
 # Update specific library
-microframework update --library=microservices-library-go
+microframework update --library=go-micro-libs
 
 # Update all dependencies
 microframework update --all
@@ -886,7 +1170,7 @@ ingress:
 ### Development Setup
 ```bash
 # Fork and clone repository
-git clone https://github.com/your-username/go-micro-framework.git
+git clone https://github.com/anasamu/go-micro-framework.git
 cd go-micro-framework
 
 # Install dependencies
@@ -922,29 +1206,63 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **microservices-library-go**: The foundation of this framework
+- **go-micro-libs**: The foundation of this framework
 - **Go Community**: For the amazing ecosystem
 - **Contributors**: All the amazing people who contribute to this project
 
-## 🗺️ Roadmap
+## 🚀 Quick Reference
 
-### Phase 1: Core Framework ✅
-- [x] Service generation
-- [x] Library integration
-- [x] CLI tool
-- [x] Bootstrap engine
+### Common Tasks
+- **[Generate New Service](docs/CLI_COMMANDS.md#microframework-new---generate-new-service)** - Create a new microservice
+- **[Add Features](docs/CLI_COMMANDS.md#microframework-add---add-features)** - Add features to existing service
+- **[Configure Service](docs/SERVICE_CONFIGURATION.md)** - Configure your service
+- **[Deploy Service](docs/DEPLOYMENT.md)** - Deploy to various platforms
+- **[Troubleshoot Issues](docs/COMMON_PROBLEMS.md)** - Common problems and solutions
 
-### Phase 2: Advanced Features 🚧
-- [ ] Plugin system
-- [ ] Custom templates
-- [ ] Advanced deployment options
-- [ ] Performance optimization
+### Service Types
+- **[REST API](docs/CLI_COMMANDS.md#examples)** - Standard HTTP REST service
+- **[GraphQL](docs/CLI_COMMANDS.md#examples)** - GraphQL API service
+- **[gRPC](docs/GRPC_COMMUNICATION.md)** - High-performance gRPC service
+- **[WebSocket](docs/CLI_COMMANDS.md#examples)** - Real-time WebSocket service
+- **[Event-Driven](docs/CLI_COMMANDS.md#examples)** - Event sourcing service
+- **[Worker](docs/CLI_COMMANDS.md#examples)** - Background job processing
+- **[Gateway](docs/CLI_COMMANDS.md#examples)** - API Gateway service
 
-### Phase 3: Ecosystem 🌟
-- [ ] IDE extensions
-- [ ] Web dashboard
-- [ ] Marketplace
-- [ ] Enterprise features
+### Library Integration
+- **[Authentication](docs/AUTHENTICATION.md)** - JWT, OAuth2, LDAP, SAML
+- **[Database](docs/LIBRARY_INTEGRATION.md#2-database-gomicro-libsdatabase)** - PostgreSQL, MySQL, MongoDB, Redis
+- **[AI Services](docs/LIBRARY_INTEGRATION.md#1-ai-services-gomicro-libsai)** - OpenAI, Anthropic, Google, DeepSeek
+- **[Messaging](docs/LIBRARY_INTEGRATION.md#5-messaging-gomicro-libsmessaging)** - Kafka, RabbitMQ, NATS, SQS
+- **[Storage](docs/LIBRARY_INTEGRATION.md#4-storage-gomicro-libsstorage)** - S3, GCS, Azure, MinIO
+- **[Monitoring](docs/LIBRARY_INTEGRATION.md#3-monitoring-gomicro-libsmonitoring)** - Prometheus, Jaeger, Grafana
+
+### Architecture Patterns
+- **[Clean Architecture](docs/ARCHITECTURE.md#service-architecture)** - Clean architecture implementation
+- **[Domain-Driven Design](docs/ARCHITECTURE.md#service-architecture)** - DDD patterns
+- **[Event Sourcing](docs/LIBRARY_INTEGRATION.md#3-event-sourcing-gomicro-libsevent)** - Event-driven architecture
+- **[CQRS](docs/LIBRARY_INTEGRATION.md#3-event-sourcing-gomicro-libsevent)** - Command Query Responsibility Segregation
+- **[Microservices](docs/ARCHITECTURE.md)** - Microservices patterns
+
+### Security & Middleware
+- **[Authentication](docs/AUTHENTICATION.md)** - Authentication implementation
+- **[Authorization](docs/AUTHORIZATION.md)** - Authorization and access control
+- **[Middleware](docs/MIDDLEWARE.md)** - Middleware implementation
+- **[Rate Limiting](docs/MIDDLEWARE.md)** - Rate limiting strategies
+- **[Circuit Breaker](docs/CIRCUIT_BREAKER.md)** - Circuit breaker patterns
+
+### Deployment & DevOps
+- **[Docker](docs/DEPLOYMENT.md#1-docker-deployment)** - Docker deployment
+- **[Kubernetes](docs/DEPLOYMENT.md#2-kubernetes-deployment)** - Kubernetes deployment
+- **[Helm](docs/DEPLOYMENT.md#3-helm-deployment)** - Helm charts
+- **[Cloud Deployment](docs/DEPLOYMENT.md#4-cloud-deployment)** - AWS, GCP, Azure
+- **[CI/CD](docs/DEPLOYMENT.md#5-cicd-integration)** - Continuous integration/deployment
+
+### Development Workflow
+- **[Getting Started](docs/FRAMEWORK_OVERVIEW.md#quick-start)** - Quick start guide
+- **[Development Setup](docs/FRAMEWORK_OVERVIEW.md#development-workflow)** - Development environment
+- **[Testing](docs/FRAMEWORK_OVERVIEW.md#testing-support)** - Testing strategies
+- **[Code Generation](docs/CLI_COMMANDS.md#microframework-generate---generate-components)** - Code generation
+- **[Configuration Management](docs/SERVICE_CONFIGURATION.md)** - Configuration best practices
 
 ---
 

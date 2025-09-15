@@ -28,6 +28,8 @@ var (
 	withBackup         string
 	withPayment        string
 	withFileGen        string
+	withAPI            string
+	withEmail          string
 	outputDir          string
 	force              bool
 )
@@ -43,7 +45,15 @@ This command creates a complete microservice project structure including:
 - Configuration files
 - Docker and Kubernetes deployment files
 - Tests and documentation
-- Integration with microservices-library-go
+- Integration with go-micro-libs
+
+CORE LIBRARIES (Always Integrated):
+- Config management (go-micro-libs/config)
+- Logging (go-micro-libs/logging)
+- Monitoring (go-micro-libs/monitoring)
+- Middleware (go-micro-libs/middleware)
+- Communication (go-micro-libs/communication)
+- Utils (internal/utils)
 
 Examples:
   microframework new user-service
@@ -78,6 +88,8 @@ func init() {
 	newCmd.Flags().StringVar(&withBackup, "with-backup", "", "Include backup services")
 	newCmd.Flags().StringVar(&withPayment, "with-payment", "", "Include payment processing")
 	newCmd.Flags().StringVar(&withFileGen, "with-filegen", "", "Include file generation")
+	newCmd.Flags().StringVar(&withAPI, "with-api", "", "Include API thirdparty integration (http, grpc, graphql, websocket)")
+	newCmd.Flags().StringVar(&withEmail, "with-email", "", "Include email services (smtp, sendgrid, mailgun)")
 
 	// Output options
 	newCmd.Flags().StringVarP(&outputDir, "output", "o", ".", "Output directory for the generated service")
@@ -121,6 +133,8 @@ func runNew(cmd *cobra.Command, args []string) error {
 		WithBackup:         withBackup != "",
 		WithPayment:        withPayment != "",
 		WithFileGen:        withFileGen != "",
+		WithAPI:            withAPI != "",
+		WithEmail:          withEmail != "",
 		OutputDir:          outputDir,
 		// Provider specifications
 		AuthProvider:       withAuth,
@@ -132,6 +146,8 @@ func runNew(cmd *cobra.Command, args []string) error {
 		CacheProvider:      withCache,
 		DiscoveryProvider:  withDiscovery,
 		PaymentProvider:    withPayment,
+		APIProvider:        withAPI,
+		EmailProvider:      withEmail,
 	}
 
 	// Create service generator
@@ -193,6 +209,12 @@ func runNew(cmd *cobra.Command, args []string) error {
 	if withFileGen != "" {
 		fmt.Printf("✓ File generation enabled (%s)\n", withFileGen)
 	}
+	if withAPI != "" {
+		fmt.Printf("✓ API thirdparty integration enabled (%s)\n", withAPI)
+	}
+	if withEmail != "" {
+		fmt.Printf("✓ Email services enabled (%s)\n", withEmail)
+	}
 
 	fmt.Println("\nGenerating service structure...")
 
@@ -201,6 +223,13 @@ func runNew(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("\n✓ Service '%s' generated successfully!\n", serviceName)
+	fmt.Printf("\n✓ Core libraries automatically integrated:\n")
+	fmt.Printf("  - Config management (go-micro-libs/config)\n")
+	fmt.Printf("  - Logging (go-micro-libs/logging)\n")
+	fmt.Printf("  - Monitoring (go-micro-libs/monitoring)\n")
+	fmt.Printf("  - Middleware (go-micro-libs/middleware)\n")
+	fmt.Printf("  - Communication (go-micro-libs/communication)\n")
+	fmt.Printf("  - Utils (internal/utils)\n")
 	fmt.Printf("\nNext steps:\n")
 	fmt.Printf("1. cd %s\n", fullOutputDir)
 	fmt.Printf("2. go mod tidy\n")

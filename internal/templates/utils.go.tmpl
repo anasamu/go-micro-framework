@@ -1,0 +1,255 @@
+package utils
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
+)
+
+// UtilsManager provides utility functions for the service
+type UtilsManager struct {
+	serviceName string
+	serviceID   string
+}
+
+// NewUtilsManager creates a new utils manager
+func NewUtilsManager(serviceName string) *UtilsManager {
+	return &UtilsManager{
+		serviceName: serviceName,
+		serviceID:   uuid.New().String(),
+	}
+}
+
+// GetServiceID returns the service instance ID
+func (u *UtilsManager) GetServiceID() string {
+	return u.serviceID
+}
+
+// GetServiceName returns the service name
+func (u *UtilsManager) GetServiceName() string {
+	return u.serviceName
+}
+
+// GenerateUUID generates a new UUID
+func (u *UtilsManager) GenerateUUID() string {
+	return uuid.New().String()
+}
+
+// GenerateUUIDWithNamespace generates a UUID with namespace
+func (u *UtilsManager) GenerateUUIDWithNamespace(namespace string) string {
+	namespaceUUID := uuid.NewSHA1(uuid.NameSpaceDNS, []byte(namespace))
+	return uuid.NewSHA1(namespaceUUID, []byte(u.serviceName)).String()
+}
+
+// GenerateRandomString generates a random string of specified length
+func (u *UtilsManager) GenerateRandomString(length int) string {
+	bytes := make([]byte, length/2)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
+// LoadEnvironment loads environment variables from .env file
+func (u *UtilsManager) LoadEnvironment(envFile string) error {
+	if envFile == "" {
+		envFile = ".env"
+	}
+	
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		return fmt.Errorf("environment file %s not found", envFile)
+	}
+	
+	return godotenv.Load(envFile)
+}
+
+// GetEnv gets environment variable with default value
+func (u *UtilsManager) GetEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// GetEnvAsInt gets environment variable as integer with default value
+func (u *UtilsManager) GetEnvAsInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+// GetEnvAsBool gets environment variable as boolean with default value
+func (u *UtilsManager) GetEnvAsBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+	}
+	return defaultValue
+}
+
+// ValidateRequiredEnv validates that required environment variables are set
+func (u *UtilsManager) ValidateRequiredEnv(requiredVars []string) error {
+	var missingVars []string
+	
+	for _, varName := range requiredVars {
+		if os.Getenv(varName) == "" {
+			missingVars = append(missingVars, varName)
+		}
+	}
+	
+	if len(missingVars) > 0 {
+		return fmt.Errorf("missing required environment variables: %s", strings.Join(missingVars, ", "))
+	}
+	
+	return nil
+}
+
+// FormatTimestamp formats timestamp to RFC3339 format
+func (u *UtilsManager) FormatTimestamp(t time.Time) string {
+	return t.Format(time.RFC3339)
+}
+
+// ParseTimestamp parses RFC3339 timestamp
+func (u *UtilsManager) ParseTimestamp(timestamp string) (time.Time, error) {
+	return time.Parse(time.RFC3339, timestamp)
+}
+
+// GetCurrentTimestamp returns current timestamp in RFC3339 format
+func (u *UtilsManager) GetCurrentTimestamp() string {
+	return u.FormatTimestamp(time.Now())
+}
+
+// SanitizeString removes special characters from string
+func (u *UtilsManager) SanitizeString(input string) string {
+	// Remove special characters except alphanumeric, spaces, hyphens, and underscores
+	var result strings.Builder
+	for _, char := range input {
+		if (char >= 'a' && char <= 'z') || 
+		   (char >= 'A' && char <= 'Z') || 
+		   (char >= '0' && char <= '9') || 
+		   char == ' ' || char == '-' || char == '_' {
+			result.WriteRune(char)
+		}
+	}
+	return strings.TrimSpace(result.String())
+}
+
+// TruncateString truncates string to specified length
+func (u *UtilsManager) TruncateString(input string, maxLength int) string {
+	if len(input) <= maxLength {
+		return input
+	}
+	return input[:maxLength] + "..."
+}
+
+// IsEmpty checks if string is empty or contains only whitespace
+func (u *UtilsManager) IsEmpty(input string) bool {
+	return strings.TrimSpace(input) == ""
+}
+
+// Contains checks if slice contains the specified item
+func (u *UtilsManager) Contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveDuplicates removes duplicate strings from slice
+func (u *UtilsManager) RemoveDuplicates(slice []string) []string {
+	keys := make(map[string]bool)
+	var result []string
+	
+	for _, item := range slice {
+		if !keys[item] {
+			keys[item] = true
+			result = append(result, item)
+		}
+	}
+	
+	return result
+}
+
+// MergeMaps merges two maps, with second map taking precedence
+func (u *UtilsManager) MergeMaps(map1, map2 map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	
+	// Add all items from first map
+	for k, v := range map1 {
+		result[k] = v
+	}
+	
+	// Add/override with items from second map
+	for k, v := range map2 {
+		result[k] = v
+	}
+	
+	return result
+}
+
+// GetMapValue gets value from map with default
+func (u *UtilsManager) GetMapValue(m map[string]interface{}, key string, defaultValue interface{}) interface{} {
+	if value, exists := m[key]; exists {
+		return value
+	}
+	return defaultValue
+}
+
+// ConvertToString converts interface{} to string
+func (u *UtilsManager) ConvertToString(value interface{}) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	case bool:
+		return strconv.FormatBool(v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// ConvertToInt converts interface{} to int
+func (u *UtilsManager) ConvertToInt(value interface{}) (int, error) {
+	switch v := value.(type) {
+	case int:
+		return v, nil
+	case int64:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	case string:
+		return strconv.Atoi(v)
+	default:
+		return 0, fmt.Errorf("cannot convert %T to int", value)
+	}
+}
+
+// ConvertToBool converts interface{} to bool
+func (u *UtilsManager) ConvertToBool(value interface{}) (bool, error) {
+	switch v := value.(type) {
+	case bool:
+		return v, nil
+	case string:
+		return strconv.ParseBool(v)
+	case int:
+		return v != 0, nil
+	default:
+		return false, fmt.Errorf("cannot convert %T to bool", value)
+	}
+}

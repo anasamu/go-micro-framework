@@ -1,0 +1,463 @@
+package handlers
+
+import (
+	"context"
+	"time"
+
+	"github.com/graphql-go/graphql"
+	"github.com/sirupsen/logrus"
+	
+	// Generated services
+	"{{.ServiceName}}/internal/services"
+)
+
+// {{.ServiceName}}Handler handles GraphQL requests for {{.ServiceName}}
+type {{.ServiceName}}Handler struct {
+	service *services.{{.ServiceName}}Service
+	logger  *logrus.Logger
+}
+
+// New{{.ServiceName}}Handler creates a new {{.ServiceName}} handler
+func New{{.ServiceName}}Handler(service *services.{{.ServiceName}}Service, logger *logrus.Logger) *{{.ServiceName}}Handler {
+	return &{{.ServiceName}}Handler{
+		service: service,
+		logger:  logger,
+	}
+}
+
+// GetGraphQLSchema returns the GraphQL schema for {{.ServiceName}}
+func (h *{{.ServiceName}}Handler) GetGraphQLSchema() (*graphql.Schema, error) {
+	// Define scalar types
+	timeType := graphql.NewScalar(graphql.ScalarConfig{
+		Name:        "Time",
+		Description: "Time scalar type",
+		Serialize: func(value interface{}) interface{} {
+			if t, ok := value.(time.Time); ok {
+				return t.Format(time.RFC3339)
+			}
+			return nil
+		},
+		ParseValue: func(value interface{}) interface{} {
+			if str, ok := value.(string); ok {
+				if t, err := time.Parse(time.RFC3339, str); err == nil {
+					return t
+				}
+			}
+			return nil
+		},
+	})
+
+	// Define {{.ServiceName}} type
+	{{.ServiceName | lower}}Type := graphql.NewObject(graphql.ObjectConfig{
+		Name:        "{{.ServiceName}}",
+		Description: "{{.ServiceName}} type",
+		Fields: graphql.Fields{
+			"id": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.ID),
+				Description: "{{.ServiceName}} ID",
+			},
+			"name": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.String),
+				Description: "{{.ServiceName}} name",
+			},
+			"description": &graphql.Field{
+				Type:        graphql.String,
+				Description: "{{.ServiceName}} description",
+			},
+			"createdAt": &graphql.Field{
+				Type:        graphql.NewNonNull(timeType),
+				Description: "Creation timestamp",
+			},
+			"updatedAt": &graphql.Field{
+				Type:        graphql.NewNonNull(timeType),
+				Description: "Last update timestamp",
+			},
+		},
+	})
+
+	// Define {{.ServiceName}} input type
+	{{.ServiceName | lower}}InputType := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name:        "{{.ServiceName}}Input",
+		Description: "{{.ServiceName}} input",
+		Fields: graphql.InputObjectConfigFieldMap{
+			"name": &graphql.InputObjectFieldConfig{
+				Type:        graphql.NewNonNull(graphql.String),
+				Description: "{{.ServiceName}} name",
+			},
+			"description": &graphql.InputObjectFieldConfig{
+				Type:        graphql.String,
+				Description: "{{.ServiceName}} description",
+			},
+		},
+	})
+
+	// Define {{.ServiceName}} update input type
+	{{.ServiceName | lower}}UpdateInputType := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name:        "{{.ServiceName}}UpdateInput",
+		Description: "{{.ServiceName}} update input",
+		Fields: graphql.InputObjectConfigFieldMap{
+			"id": &graphql.InputObjectFieldConfig{
+				Type:        graphql.NewNonNull(graphql.ID),
+				Description: "{{.ServiceName}} ID",
+			},
+			"name": &graphql.InputObjectFieldConfig{
+				Type:        graphql.String,
+				Description: "{{.ServiceName}} name",
+			},
+			"description": &graphql.InputObjectFieldConfig{
+				Type:        graphql.String,
+				Description: "{{.ServiceName}} description",
+			},
+		},
+	})
+
+	// Define response type
+	responseType := graphql.NewObject(graphql.ObjectConfig{
+		Name:        "Response",
+		Description: "Response type",
+		Fields: graphql.Fields{
+			"success": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.Boolean),
+				Description: "Success status",
+			},
+			"message": &graphql.Field{
+				Type:        graphql.String,
+				Description: "Response message",
+			},
+			"errors": &graphql.Field{
+				Type:        graphql.NewList(graphql.NewNonNull(graphql.String)),
+				Description: "Error messages",
+			},
+		},
+	})
+
+	// Define pagination info type
+	paginationInfoType := graphql.NewObject(graphql.ObjectConfig{
+		Name:        "PaginationInfo",
+		Description: "Pagination info",
+		Fields: graphql.Fields{
+			"page": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.Int),
+				Description: "Current page",
+			},
+			"limit": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.Int),
+				Description: "Items per page",
+			},
+			"total": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.Int),
+				Description: "Total items",
+			},
+			"totalPages": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.Int),
+				Description: "Total pages",
+			},
+		},
+	})
+
+	// Define {{.ServiceName}} list response type
+	{{.ServiceName | lower}}ListResponseType := graphql.NewObject(graphql.ObjectConfig{
+		Name:        "{{.ServiceName}}ListResponse",
+		Description: "{{.ServiceName}} list response",
+		Fields: graphql.Fields{
+			"{{.ServiceName | lower}}s": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.NewList(graphql.NewNonNull({{.ServiceName | lower}}Type))),
+				Description: "List of {{.ServiceName}}s",
+			},
+			"pagination": &graphql.Field{
+				Type:        graphql.NewNonNull(paginationInfoType),
+				Description: "Pagination info",
+			},
+			"response": &graphql.Field{
+				Type:        graphql.NewNonNull(responseType),
+				Description: "Response info",
+			},
+		},
+	})
+
+	// Define health type
+	healthType := graphql.NewObject(graphql.ObjectConfig{
+		Name:        "Health",
+		Description: "Health check type",
+		Fields: graphql.Fields{
+			"status": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.String),
+				Description: "Health status",
+			},
+			"message": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.String),
+				Description: "Health message",
+			},
+			"timestamp": &graphql.Field{
+				Type:        graphql.NewNonNull(timeType),
+				Description: "Health check timestamp",
+			},
+		},
+	})
+
+	// Define service info type
+	serviceInfoType := graphql.NewObject(graphql.ObjectConfig{
+		Name:        "ServiceInfo",
+		Description: "Service info type",
+		Fields: graphql.Fields{
+			"name": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.String),
+				Description: "Service name",
+			},
+			"version": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.String),
+				Description: "Service version",
+			},
+			"description": &graphql.Field{
+				Type:        graphql.NewNonNull(graphql.String),
+				Description: "Service description",
+			},
+			"startedAt": &graphql.Field{
+				Type:        graphql.NewNonNull(timeType),
+				Description: "Service start time",
+			},
+		},
+	})
+
+	// Define query type
+	queryType := graphql.NewObject(graphql.ObjectConfig{
+		Name:        "Query",
+		Description: "Query type",
+		Fields: graphql.Fields{
+			"health": &graphql.Field{
+				Type:        graphql.NewNonNull(healthType),
+				Description: "Health check",
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return map[string]interface{}{
+						"status":    "healthy",
+						"message":   "{{.ServiceName}} service is running",
+						"timestamp": time.Now(),
+					}, nil
+				},
+			},
+			"serviceInfo": &graphql.Field{
+				Type:        graphql.NewNonNull(serviceInfoType),
+				Description: "Service information",
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return map[string]interface{}{
+						"name":        "{{.ServiceName}}",
+						"version":     "1.0.0",
+						"description": "{{.ServiceName}} microservice",
+						"startedAt":   time.Now(),
+					}, nil
+				},
+			},
+			"{{.ServiceName | lower}}": &graphql.Field{
+				Type:        graphql.NewNonNull({{.ServiceName | lower}}Type),
+				Description: "Get {{.ServiceName}} by ID",
+				Args: graphql.FieldConfigArgument{
+					"id": &graphql.ArgumentConfig{
+						Type:        graphql.NewNonNull(graphql.ID),
+						Description: "{{.ServiceName}} ID",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					id := p.Args["id"].(string)
+					
+					{{.ServiceName | lower}}, err := h.service.Get{{.ServiceName}}(p.Context, id)
+					if err != nil {
+						h.logger.WithError(err).Error("Failed to get {{.ServiceName}}")
+						return nil, err
+					}
+					
+					return map[string]interface{}{
+						"id":          {{.ServiceName | lower}}.ID,
+						"name":        {{.ServiceName | lower}}.Name,
+						"description": {{.ServiceName | lower}}.Description,
+						"createdAt":   {{.ServiceName | lower}}.CreatedAt,
+						"updatedAt":   {{.ServiceName | lower}}.UpdatedAt,
+					}, nil
+				},
+			},
+			"{{.ServiceName | lower}}s": &graphql.Field{
+				Type:        graphql.NewNonNull({{.ServiceName | lower}}ListResponseType),
+				Description: "List {{.ServiceName}}s",
+				Args: graphql.FieldConfigArgument{
+					"page": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "Page number",
+					},
+					"limit": &graphql.ArgumentConfig{
+						Type:        graphql.Int,
+						Description: "Items per page",
+					},
+					"search": &graphql.ArgumentConfig{
+						Type:        graphql.String,
+						Description: "Search term",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					page := 1
+					if p.Args["page"] != nil {
+						page = p.Args["page"].(int)
+					}
+					
+					limit := 10
+					if p.Args["limit"] != nil {
+						limit = p.Args["limit"].(int)
+					}
+					
+					search := ""
+					if p.Args["search"] != nil {
+						search = p.Args["search"].(string)
+					}
+					
+					{{.ServiceName | lower}}s, total, err := h.service.List{{.ServiceName}}s(p.Context, page, limit, search)
+					if err != nil {
+						h.logger.WithError(err).Error("Failed to list {{.ServiceName}}s")
+						return nil, err
+					}
+					
+					// Convert to GraphQL response
+					graphql{{.ServiceName}}s := make([]interface{}, 0, len({{.ServiceName | lower}}s))
+					for _, {{.ServiceName | lower}} := range {{.ServiceName | lower}}s {
+						graphql{{.ServiceName}}s = append(graphql{{.ServiceName}}s, map[string]interface{}{
+							"id":          {{.ServiceName | lower}}.ID,
+							"name":        {{.ServiceName | lower}}.Name,
+							"description": {{.ServiceName | lower}}.Description,
+							"createdAt":   {{.ServiceName | lower}}.CreatedAt,
+							"updatedAt":   {{.ServiceName | lower}}.UpdatedAt,
+						})
+					}
+					
+					totalPages := (total + limit - 1) / limit
+					
+					return map[string]interface{}{
+						"{{.ServiceName | lower}}s": graphql{{.ServiceName}}s,
+						"pagination": map[string]interface{}{
+							"page":       page,
+							"limit":      limit,
+							"total":      total,
+							"totalPages": totalPages,
+						},
+						"response": map[string]interface{}{
+							"success": true,
+							"message": "{{.ServiceName}}s retrieved successfully",
+							"errors":  []string{},
+						},
+					}, nil
+				},
+			},
+		},
+	})
+
+	// Define mutation type
+	mutationType := graphql.NewObject(graphql.ObjectConfig{
+		Name:        "Mutation",
+		Description: "Mutation type",
+		Fields: graphql.Fields{
+			"create{{.ServiceName}}": &graphql.Field{
+				Type:        graphql.NewNonNull({{.ServiceName | lower}}Type),
+				Description: "Create {{.ServiceName}}",
+				Args: graphql.FieldConfigArgument{
+					"input": &graphql.ArgumentConfig{
+						Type:        graphql.NewNonNull({{.ServiceName | lower}}InputType),
+						Description: "{{.ServiceName}} input",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					input := p.Args["input"].(map[string]interface{})
+					
+					name := input["name"].(string)
+					description := ""
+					if input["description"] != nil {
+						description = input["description"].(string)
+					}
+					
+					{{.ServiceName | lower}}, err := h.service.Create{{.ServiceName}}(p.Context, name, description)
+					if err != nil {
+						h.logger.WithError(err).Error("Failed to create {{.ServiceName}}")
+						return nil, err
+					}
+					
+					return map[string]interface{}{
+						"id":          {{.ServiceName | lower}}.ID,
+						"name":        {{.ServiceName | lower}}.Name,
+						"description": {{.ServiceName | lower}}.Description,
+						"createdAt":   {{.ServiceName | lower}}.CreatedAt,
+						"updatedAt":   {{.ServiceName | lower}}.UpdatedAt,
+					}, nil
+				},
+			},
+			"update{{.ServiceName}}": &graphql.Field{
+				Type:        graphql.NewNonNull({{.ServiceName | lower}}Type),
+				Description: "Update {{.ServiceName}}",
+				Args: graphql.FieldConfigArgument{
+					"input": &graphql.ArgumentConfig{
+						Type:        graphql.NewNonNull({{.ServiceName | lower}}UpdateInputType),
+						Description: "{{.ServiceName}} update input",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					input := p.Args["input"].(map[string]interface{})
+					
+					id := input["id"].(string)
+					name := ""
+					if input["name"] != nil {
+						name = input["name"].(string)
+					}
+					description := ""
+					if input["description"] != nil {
+						description = input["description"].(string)
+					}
+					
+					{{.ServiceName | lower}}, err := h.service.Update{{.ServiceName}}(p.Context, id, name, description)
+					if err != nil {
+						h.logger.WithError(err).Error("Failed to update {{.ServiceName}}")
+						return nil, err
+					}
+					
+					return map[string]interface{}{
+						"id":          {{.ServiceName | lower}}.ID,
+						"name":        {{.ServiceName | lower}}.Name,
+						"description": {{.ServiceName | lower}}.Description,
+						"createdAt":   {{.ServiceName | lower}}.CreatedAt,
+						"updatedAt":   {{.ServiceName | lower}}.UpdatedAt,
+					}, nil
+				},
+			},
+			"delete{{.ServiceName}}": &graphql.Field{
+				Type:        graphql.NewNonNull(responseType),
+				Description: "Delete {{.ServiceName}}",
+				Args: graphql.FieldConfigArgument{
+					"id": &graphql.ArgumentConfig{
+						Type:        graphql.NewNonNull(graphql.ID),
+						Description: "{{.ServiceName}} ID",
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					id := p.Args["id"].(string)
+					
+					err := h.service.Delete{{.ServiceName}}(p.Context, id)
+					if err != nil {
+						h.logger.WithError(err).Error("Failed to delete {{.ServiceName}}")
+						return nil, err
+					}
+					
+					return map[string]interface{}{
+						"success": true,
+						"message": "{{.ServiceName}} deleted successfully",
+						"errors":  []string{},
+					}, nil
+				},
+			},
+		},
+	})
+
+	// Create schema
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    queryType,
+		Mutation: mutationType,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &schema, nil
+}

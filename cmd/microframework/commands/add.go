@@ -22,6 +22,7 @@ This command allows you to add new features to an existing service without
 regenerating the entire project structure.
 
 Available features:
+  api             - API management (REST, GraphQL, gRPC, WebSocket)
   ai              - AI services (OpenAI, Anthropic, Google)
   auth            - Authentication (JWT, OAuth, LDAP, SAML)
   backup          - Backup services (S3, GCS, Azure)
@@ -32,6 +33,7 @@ Available features:
   config          - Configuration management
   database        - Database providers
   discovery       - Service discovery
+  email           - Email services (SMTP, SendGrid, SES, Mailgun)
   event           - Event sourcing
   failover        - Failover mechanisms
   filegen         - File generation
@@ -79,6 +81,8 @@ func runAdd(cmd *cobra.Command, args []string) error {
 
 	// Add the feature based on type
 	switch feature {
+	case "api":
+		return addAPIFeature(addProvider)
 	case "ai":
 		return addAIFeature(addProvider)
 	case "auth":
@@ -99,6 +103,8 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return addDatabaseFeature(addProvider)
 	case "discovery":
 		return addDiscoveryFeature(addProvider)
+	case "email":
+		return addEmailFeature(addProvider)
 	case "event":
 		return addEventFeature(addProvider)
 	case "failover":
@@ -132,7 +138,7 @@ func validateFeatureName(feature string) error {
 		"ai", "auth", "backup", "cache", "chaos", "circuitbreaker",
 		"communication", "config", "database", "discovery", "event",
 		"failover", "filegen", "logging", "messaging", "middleware",
-		"monitoring", "payment", "ratelimit", "scheduling", "storage",
+		"monitoring", "payment", "ratelimit", "scheduling", "storage", "api", "email",
 	}
 
 	for _, valid := range validFeatures {
@@ -163,11 +169,33 @@ func checkMicroserviceDirectory() error {
 }
 
 // Feature-specific add functions
+func addAPIFeature(provider string) error {
+	fmt.Println("Adding API feature...")
+
+	// Add API dependencies to go.mod
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
+		return err
+	}
+
+	// Generate API configuration
+	if err := generateAPIConfig(provider); err != nil {
+		return err
+	}
+
+	// Update main.go to include API manager
+	if err := updateMainWithAPI(); err != nil {
+		return err
+	}
+
+	fmt.Println("✓ API feature added successfully")
+	return nil
+}
+
 func addAIFeature(provider string) error {
 	fmt.Println("Adding AI feature...")
 
 	// Add AI dependencies to go.mod
-	if err := addDependency("github.com/anasamu/microservices-library-go/ai"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -189,7 +217,7 @@ func addAuthFeature(provider string) error {
 	fmt.Println("Adding authentication feature...")
 
 	// Add auth dependencies
-	if err := addDependency("github.com/anasamu/microservices-library-go/auth"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -210,7 +238,7 @@ func addAuthFeature(provider string) error {
 func addBackupFeature(provider string) error {
 	fmt.Println("Adding backup feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/backup"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -229,7 +257,7 @@ func addBackupFeature(provider string) error {
 func addCacheFeature(provider string) error {
 	fmt.Println("Adding cache feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/cache"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -248,7 +276,7 @@ func addCacheFeature(provider string) error {
 func addChaosFeature(provider string) error {
 	fmt.Println("Adding chaos engineering feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/chaos"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -267,7 +295,7 @@ func addChaosFeature(provider string) error {
 func addCircuitBreakerFeature(provider string) error {
 	fmt.Println("Adding circuit breaker feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/circuitbreaker"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -286,7 +314,7 @@ func addCircuitBreakerFeature(provider string) error {
 func addCommunicationFeature(provider string) error {
 	fmt.Println("Adding communication feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/communication"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -305,7 +333,7 @@ func addCommunicationFeature(provider string) error {
 func addConfigFeature(provider string) error {
 	fmt.Println("Adding configuration management feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/config"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -324,7 +352,7 @@ func addConfigFeature(provider string) error {
 func addDatabaseFeature(provider string) error {
 	fmt.Println("Adding database feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/database"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -343,7 +371,7 @@ func addDatabaseFeature(provider string) error {
 func addDiscoveryFeature(provider string) error {
 	fmt.Println("Adding service discovery feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/discovery"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -359,10 +387,29 @@ func addDiscoveryFeature(provider string) error {
 	return nil
 }
 
+func addEmailFeature(provider string) error {
+	fmt.Println("Adding email feature...")
+
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
+		return err
+	}
+
+	if err := generateEmailConfig(provider); err != nil {
+		return err
+	}
+
+	if err := updateMainWithEmail(); err != nil {
+		return err
+	}
+
+	fmt.Println("✓ Email feature added successfully")
+	return nil
+}
+
 func addEventFeature(provider string) error {
 	fmt.Println("Adding event sourcing feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/event"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -381,7 +428,7 @@ func addEventFeature(provider string) error {
 func addFailoverFeature(provider string) error {
 	fmt.Println("Adding failover feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/failover"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -400,7 +447,7 @@ func addFailoverFeature(provider string) error {
 func addFileGenFeature(provider string) error {
 	fmt.Println("Adding file generation feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/filegen"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -419,7 +466,7 @@ func addFileGenFeature(provider string) error {
 func addLoggingFeature(provider string) error {
 	fmt.Println("Adding logging feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/logging"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -438,7 +485,7 @@ func addLoggingFeature(provider string) error {
 func addMessagingFeature(provider string) error {
 	fmt.Println("Adding messaging feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/messaging"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -457,7 +504,7 @@ func addMessagingFeature(provider string) error {
 func addMiddlewareFeature(provider string) error {
 	fmt.Println("Adding middleware feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/middleware"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -476,7 +523,7 @@ func addMiddlewareFeature(provider string) error {
 func addMonitoringFeature(provider string) error {
 	fmt.Println("Adding monitoring feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/monitoring"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -495,7 +542,7 @@ func addMonitoringFeature(provider string) error {
 func addPaymentFeature(provider string) error {
 	fmt.Println("Adding payment processing feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/payment"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -514,7 +561,7 @@ func addPaymentFeature(provider string) error {
 func addRateLimitFeature(provider string) error {
 	fmt.Println("Adding rate limiting feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/ratelimit"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -533,7 +580,7 @@ func addRateLimitFeature(provider string) error {
 func addSchedulingFeature(provider string) error {
 	fmt.Println("Adding task scheduling feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/scheduling"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -552,7 +599,7 @@ func addSchedulingFeature(provider string) error {
 func addStorageFeature(provider string) error {
 	fmt.Println("Adding storage feature...")
 
-	if err := addDependency("github.com/anasamu/microservices-library-go/storage"); err != nil {
+	if err := addDependency("github.com/anasamu/go-micro-libs"); err != nil {
 		return err
 	}
 
@@ -572,6 +619,12 @@ func addStorageFeature(provider string) error {
 func addDependency(dependency string) error {
 	// This would typically run `go get` command
 	fmt.Printf("Adding dependency: %s\n", dependency)
+	return nil
+}
+
+func generateAPIConfig(provider string) error {
+	// Generate API configuration
+	fmt.Printf("Generating API configuration for provider: %s\n", provider)
 	return nil
 }
 
@@ -623,6 +676,11 @@ func generateDatabaseConfig(provider string) error {
 
 func generateDiscoveryConfig(provider string) error {
 	fmt.Printf("Generating service discovery configuration for provider: %s\n", provider)
+	return nil
+}
+
+func generateEmailConfig(provider string) error {
+	fmt.Printf("Generating email configuration for provider: %s\n", provider)
 	return nil
 }
 
@@ -682,6 +740,11 @@ func generateStorageConfig(provider string) error {
 }
 
 // Functions to update main.go with new features
+func updateMainWithAPI() error {
+	fmt.Println("Updating main.go with API manager")
+	return nil
+}
+
 func updateMainWithAI() error {
 	fmt.Println("Updating main.go with AI manager")
 	return nil
@@ -729,6 +792,11 @@ func updateMainWithDatabase() error {
 
 func updateMainWithDiscovery() error {
 	fmt.Println("Updating main.go with discovery manager")
+	return nil
+}
+
+func updateMainWithEmail() error {
+	fmt.Println("Updating main.go with email manager")
 	return nil
 }
 

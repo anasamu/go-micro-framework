@@ -17,29 +17,41 @@ import (
 	"github.com/spf13/viper"
 	"github.com/sirupsen/logrus"
 	
-	// Use existing microservices-library-go
-	"github.com/anasamu/microservices-library-go/config"
-	"github.com/anasamu/microservices-library-go/logging"
-	"github.com/anasamu/microservices-library-go/monitoring"
-	"github.com/anasamu/microservices-library-go/database"
-	"github.com/anasamu/microservices-library-go/auth"
-	"github.com/anasamu/microservices-library-go/middleware"
-	"github.com/anasamu/microservices-library-go/communication"
+	// Use go-micro-libs library
+	microservices "github.com/anasamu/go-micro-libs"
 )
 
 func main() {
 	ctx := context.Background()
 	
-	// Initialize using existing libraries
-	configManager := config_gateway.NewManager()
-	loggingManager := logging_gateway.NewManager()
-	monitoringManager := monitoring_gateway.NewManager()
-	databaseManager := database_gateway.NewManager()
-	authManager := auth_gateway.NewManager()
-	middlewareManager := middleware_gateway.NewManager()
-	communicationManager := communication_gateway.NewManager()
+	// Initialize using go-micro-libs library
+	configManager := microservices.NewConfigManager()
+	loggingManager := microservices.NewLoggingManager(
+		microservices.DefaultLoggingManagerConfig(),
+		logger,
+	)
+	monitoringManager := microservices.NewMonitoringManager(
+		microservices.DefaultMonitoringManagerConfig(),
+		logger,
+	)
+	databaseManager := microservices.NewDatabaseManager(
+		microservices.DefaultDatabaseManagerConfig(),
+		logger,
+	)
+	authManager := microservices.NewAuthManager(
+		microservices.DefaultAuthManagerConfig(),
+		logger,
+	)
+	middlewareManager := microservices.NewMiddlewareManager(
+		microservices.DefaultMiddlewareManagerConfig(),
+		logger,
+	)
+	communicationManager := microservices.NewCommunicationManager(
+		microservices.DefaultCommunicationManagerConfig(),
+		logger,
+	)
 	
-	// Bootstrap service using existing libraries
+	// Bootstrap service using go-micro-libs library
 	if err := bootstrapService(ctx, configManager, loggingManager, monitoringManager, 
 		databaseManager, authManager, middlewareManager, communicationManager); err != nil {
 		log.Fatal("Failed to bootstrap service:", err)
@@ -101,8 +113,8 @@ func bootstrapService(ctx context.Context,
 go 1.21
 
 require (
-	// Use existing microservices-library-go
-	github.com/anasamu/microservices-library-go v0.1.0
+	// Use go-micro-libs library
+	github.com/anasamu/go-micro-libs v1.0.0
 	
 	// Core dependencies
 	github.com/gin-gonic/gin v1.9.1
@@ -1029,7 +1041,7 @@ func TestServiceIntegrationTestSuite(t *testing.T) {
 `
 
 	ReadmeTemplate = "# {{.ServiceName}} Service\n\n" +
-		"A microservice built with Go Micro Framework using existing microservices-library-go packages.\n\n" +
+		"A microservice built with Go Micro Framework using go-micro-libs library.\n\n" +
 		"## Features\n\n" +
 		"- REST API with Gin framework\n" +
 		"- Database integration with GORM\n" +
@@ -1184,4 +1196,406 @@ func TestServiceIntegrationTestSuite(t *testing.T) {
 		"- Rate limit headers are included in responses\n\n" +
 		"## Monitoring\n\n" +
 		"The service exposes Prometheus metrics at `/metrics` endpoint."
+
+	MigrationExampleTemplate = `{
+  "version": "{{.Timestamp}}",
+  "description": "{{.Description}}",
+  "up_sql": "-- Add your up migration SQL here\n-- Example:\n-- CREATE TABLE {{.ServiceName | lower}}_users (\n--     id SERIAL PRIMARY KEY,\n--     name VARCHAR(255) NOT NULL,\n--     email VARCHAR(255) UNIQUE NOT NULL,\n--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n--     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n-- );",
+  "down_sql": "-- Add your down migration SQL here\n-- Example:\n-- DROP TABLE IF EXISTS {{.ServiceName | lower}}_users;",
+  "created_at": "{{.CreatedAt}}",
+  "checksum": ""
+}`
+
+	UtilsTemplate = `package utils
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
+)
+
+// UtilsManager provides utility functions for the service
+type UtilsManager struct {
+	serviceName string
+	serviceID   string
+}
+
+// NewUtilsManager creates a new utils manager
+func NewUtilsManager(serviceName string) *UtilsManager {
+	return &UtilsManager{
+		serviceName: serviceName,
+		serviceID:   uuid.New().String(),
+	}
+}
+
+// GetServiceID returns the service instance ID
+func (u *UtilsManager) GetServiceID() string {
+	return u.serviceID
+}
+
+// GetServiceName returns the service name
+func (u *UtilsManager) GetServiceName() string {
+	return u.serviceName
+}
+
+// GenerateUUID generates a new UUID
+func (u *UtilsManager) GenerateUUID() string {
+	return uuid.New().String()
+}
+
+// GenerateUUIDWithNamespace generates a UUID with namespace
+func (u *UtilsManager) GenerateUUIDWithNamespace(namespace string) string {
+	namespaceUUID := uuid.NewSHA1(uuid.NameSpaceDNS, []byte(namespace))
+	return uuid.NewSHA1(namespaceUUID, []byte(u.serviceName)).String()
+}
+
+// GenerateRandomString generates a random string of specified length
+func (u *UtilsManager) GenerateRandomString(length int) string {
+	bytes := make([]byte, length/2)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
+// LoadEnvironment loads environment variables from .env file
+func (u *UtilsManager) LoadEnvironment(envFile string) error {
+	if envFile == "" {
+		envFile = ".env"
+	}
+	
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		return fmt.Errorf("environment file %s not found", envFile)
+	}
+	
+	return godotenv.Load(envFile)
+}
+
+// GetEnv gets environment variable with default value
+func (u *UtilsManager) GetEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// GetEnvAsInt gets environment variable as integer with default value
+func (u *UtilsManager) GetEnvAsInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+// GetEnvAsBool gets environment variable as boolean with default value
+func (u *UtilsManager) GetEnvAsBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+	}
+	return defaultValue
+}
+
+// ValidateRequiredEnv validates that required environment variables are set
+func (u *UtilsManager) ValidateRequiredEnv(requiredVars []string) error {
+	var missingVars []string
+	
+	for _, varName := range requiredVars {
+		if os.Getenv(varName) == "" {
+			missingVars = append(missingVars, varName)
+		}
+	}
+	
+	if len(missingVars) > 0 {
+		return fmt.Errorf("missing required environment variables: %s", strings.Join(missingVars, ", "))
+	}
+	
+	return nil
+}
+
+// FormatTimestamp formats timestamp to RFC3339 format
+func (u *UtilsManager) FormatTimestamp(t time.Time) string {
+	return t.Format(time.RFC3339)
+}
+
+// ParseTimestamp parses RFC3339 timestamp
+func (u *UtilsManager) ParseTimestamp(timestamp string) (time.Time, error) {
+	return time.Parse(time.RFC3339, timestamp)
+}
+
+// GetCurrentTimestamp returns current timestamp in RFC3339 format
+func (u *UtilsManager) GetCurrentTimestamp() string {
+	return u.FormatTimestamp(time.Now())
+}
+
+// SanitizeString removes special characters from string
+func (u *UtilsManager) SanitizeString(input string) string {
+	// Remove special characters except alphanumeric, spaces, hyphens, and underscores
+	var result strings.Builder
+	for _, char := range input {
+		if (char >= 'a' && char <= 'z') || 
+		   (char >= 'A' && char <= 'Z') || 
+		   (char >= '0' && char <= '9') || 
+		   char == ' ' || char == '-' || char == '_' {
+			result.WriteRune(char)
+		}
+	}
+	return strings.TrimSpace(result.String())
+}
+
+// TruncateString truncates string to specified length
+func (u *UtilsManager) TruncateString(input string, maxLength int) string {
+	if len(input) <= maxLength {
+		return input
+	}
+	return input[:maxLength] + "..."
+}
+
+// IsEmpty checks if string is empty or contains only whitespace
+func (u *UtilsManager) IsEmpty(input string) bool {
+	return strings.TrimSpace(input) == ""
+}
+
+// Contains checks if slice contains the specified item
+func (u *UtilsManager) Contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveDuplicates removes duplicate strings from slice
+func (u *UtilsManager) RemoveDuplicates(slice []string) []string {
+	keys := make(map[string]bool)
+	var result []string
+	
+	for _, item := range slice {
+		if !keys[item] {
+			keys[item] = true
+			result = append(result, item)
+		}
+	}
+	
+	return result
+}
+
+// MergeMaps merges two maps, with second map taking precedence
+func (u *UtilsManager) MergeMaps(map1, map2 map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	
+	// Add all items from first map
+	for k, v := range map1 {
+		result[k] = v
+	}
+	
+	// Add/override with items from second map
+	for k, v := range map2 {
+		result[k] = v
+	}
+	
+	return result
+}
+
+// GetMapValue gets value from map with default
+func (u *UtilsManager) GetMapValue(m map[string]interface{}, key string, defaultValue interface{}) interface{} {
+	if value, exists := m[key]; exists {
+		return value
+	}
+	return defaultValue
+}
+
+// ConvertToString converts interface{} to string
+func (u *UtilsManager) ConvertToString(value interface{}) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	case bool:
+		return strconv.FormatBool(v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// ConvertToInt converts interface{} to int
+func (u *UtilsManager) ConvertToInt(value interface{}) (int, error) {
+	switch v := value.(type) {
+	case int:
+		return v, nil
+	case int64:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	case string:
+		return strconv.Atoi(v)
+	default:
+		return 0, fmt.Errorf("cannot convert %T to int", value)
+	}
+}
+
+// ConvertToBool converts interface{} to bool
+func (u *UtilsManager) ConvertToBool(value interface{}) (bool, error) {
+	switch v := value.(type) {
+	case bool:
+		return v, nil
+	case string:
+		return strconv.ParseBool(v)
+	case int:
+		return v != 0, nil
+	default:
+		return false, fmt.Errorf("cannot convert %T to bool", value)
+	}
+	}
+`
+
+	EnvExampleTemplate = `# Environment variables for {{.ServiceName}} service
+
+# Service Configuration
+{{.ServiceName | upper}}_SERVICE_NAME={{.ServiceName}}
+{{.ServiceName | upper}}_SERVICE_VERSION=1.0.0
+{{.ServiceName | upper}}_SERVICE_PORT=8080
+{{.ServiceName | upper}}_SERVICE_ENVIRONMENT=development
+
+# Core Configuration
+{{.ServiceName | upper}}_CONFIG_PATH=./configs
+{{.ServiceName | upper}}_CONFIG_FORMAT=yaml
+
+# Core Logging
+{{.ServiceName | upper}}_LOG_LEVEL=info
+{{.ServiceName | upper}}_LOG_FORMAT=json
+{{.ServiceName | upper}}_LOG_FILE_PATH=/var/log/{{.ServiceName}}.log
+
+# Core Monitoring
+{{.ServiceName | upper}}_PROMETHEUS_ENDPOINT=http://localhost:9090
+{{.ServiceName | upper}}_JAEGER_ENDPOINT=http://localhost:14268
+{{.ServiceName | upper}}_GRAFANA_ENDPOINT=http://localhost:3000
+
+# Core Middleware
+{{.ServiceName | upper}}_RATE_LIMIT_ENABLED=true
+{{.ServiceName | upper}}_RATE_LIMIT_REQUESTS_PER_MINUTE=100
+{{.ServiceName | upper}}_CIRCUIT_BREAKER_ENABLED=true
+{{.ServiceName | upper}}_CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
+
+# Core Communication
+{{.ServiceName | upper}}_REST_PORT=8080
+{{.ServiceName | upper}}_GRPC_PORT=9090
+{{.ServiceName | upper}}_REQUEST_TIMEOUT=30s
+
+# Core Utils
+{{.ServiceName | upper}}_UUID_VERSION=4
+{{.ServiceName | upper}}_UUID_NAMESPACE={{.ServiceName}}
+{{.ServiceName | upper}}_VALIDATION_ENABLED=true
+{{.ServiceName | upper}}_VALIDATION_STRICT_MODE=false
+
+{{- if .WithDatabase}}
+# Database Configuration
+{{.ServiceName | upper}}_DATABASE_URL=postgres://localhost:5432/{{.ServiceName}}_dev?sslmode=disable
+{{.ServiceName | upper}}_DATABASE_MAX_CONNECTIONS=100
+{{.ServiceName | upper}}_DATABASE_MAX_IDLE_CONNECTIONS=10
+{{.ServiceName | upper}}_REDIS_URL=redis://localhost:6379
+{{.ServiceName | upper}}_REDIS_DB=0
+{{.ServiceName | upper}}_REDIS_POOL_SIZE=10
+{{- end}}
+
+{{- if .WithAuth}}
+# Authentication Configuration
+{{.ServiceName | upper}}_JWT_SECRET=your-jwt-secret-key-here
+{{.ServiceName | upper}}_JWT_EXPIRATION=24h
+{{.ServiceName | upper}}_JWT_ISSUER={{.ServiceName}}
+{{.ServiceName | upper}}_OAUTH_CLIENT_ID=your-oauth-client-id
+{{.ServiceName | upper}}_OAUTH_CLIENT_SECRET=your-oauth-client-secret
+{{.ServiceName | upper}}_OAUTH_REDIRECT_URL=http://localhost:8080/auth/callback
+{{- end}}
+
+{{- if .WithMessaging}}
+# Messaging Configuration
+{{.ServiceName | upper}}_KAFKA_BROKERS=localhost:9092
+{{.ServiceName | upper}}_KAFKA_GROUP_ID={{.ServiceName}}
+{{.ServiceName | upper}}_RABBITMQ_URL=amqp://localhost:5672
+{{.ServiceName | upper}}_RABBITMQ_EXCHANGE={{.ServiceName}}-exchange
+{{.ServiceName | upper}}_RABBITMQ_QUEUE={{.ServiceName}}-queue
+{{- end}}
+
+{{- if .WithAI}}
+# AI Services Configuration
+{{.ServiceName | upper}}_OPENAI_API_KEY=your-openai-api-key
+{{.ServiceName | upper}}_OPENAI_DEFAULT_MODEL=gpt-4
+{{.ServiceName | upper}}_ANTHROPIC_API_KEY=your-anthropic-api-key
+{{.ServiceName | upper}}_ANTHROPIC_DEFAULT_MODEL=claude-3-sonnet
+{{- end}}
+
+{{- if .WithStorage}}
+# Storage Configuration
+{{.ServiceName | upper}}_AWS_ACCESS_KEY_ID=your-aws-access-key
+{{.ServiceName | upper}}_AWS_SECRET_ACCESS_KEY=your-aws-secret-key
+{{.ServiceName | upper}}_AWS_REGION=us-east-1
+{{.ServiceName | upper}}_S3_BUCKET=your-s3-bucket
+{{.ServiceName | upper}}_GCS_CREDENTIALS_FILE=path/to/gcs-credentials.json
+{{.ServiceName | upper}}_GCS_BUCKET=your-gcs-bucket
+{{- end}}
+
+{{- if .WithCache}}
+# Cache Configuration
+{{.ServiceName | upper}}_CACHE_REDIS_URL=redis://localhost:6379
+{{.ServiceName | upper}}_CACHE_REDIS_DB=2
+{{.ServiceName | upper}}_CACHE_TTL=1h
+{{.ServiceName | upper}}_CACHE_MEMORY_MAX_SIZE=1000
+{{.ServiceName | upper}}_CACHE_MEMORY_TTL=30m
+{{- end}}
+
+{{- if .WithDiscovery}}
+# Service Discovery Configuration
+{{.ServiceName | upper}}_CONSUL_ADDRESS=localhost:8500
+{{.ServiceName | upper}}_CONSUL_TOKEN=your-consul-token
+{{.ServiceName | upper}}_KUBERNETES_CONFIG=path/to/kubeconfig
+{{- end}}
+
+{{- if .WithPayment}}
+# Payment Configuration
+{{.ServiceName | upper}}_STRIPE_API_KEY=your-stripe-api-key
+{{.ServiceName | upper}}_STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+{{.ServiceName | upper}}_PAYPAL_CLIENT_ID=your-paypal-client-id
+{{.ServiceName | upper}}_PAYPAL_CLIENT_SECRET=your-paypal-client-secret
+{{- end}}
+
+{{- if .WithAPI}}
+# API Integration Configuration
+{{.ServiceName | upper}}_API_HTTP_TIMEOUT=30s
+{{.ServiceName | upper}}_API_HTTP_RETRY_ATTEMPTS=3
+{{.ServiceName | upper}}_API_HTTP_RETRY_DELAY=5s
+{{.ServiceName | upper}}_API_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
+{{.ServiceName | upper}}_API_WEBSOCKET_TIMEOUT=30s
+{{- end}}
+
+{{- if .WithEmail}}
+# Email Configuration
+{{.ServiceName | upper}}_SMTP_HOST=smtp.gmail.com
+{{.ServiceName | upper}}_SMTP_PORT=587
+{{.ServiceName | upper}}_SMTP_USERNAME=your-email@gmail.com
+{{.ServiceName | upper}}_SMTP_PASSWORD=your-email-password
+{{.ServiceName | upper}}_SENDGRID_API_KEY=your-sendgrid-api-key
+{{.ServiceName | upper}}_MAILGUN_API_KEY=your-mailgun-api-key
+{{.ServiceName | upper}}_MAILGUN_DOMAIN=your-mailgun-domain
+{{- end}}
+
+# External Services
+{{.ServiceName | upper}}_ELASTICSEARCH_ENDPOINT=http://localhost:9200
+{{.ServiceName | upper}}_CONSUL_ADDRESS=localhost:8500
+{{.ServiceName | upper}}_CONSUL_TOKEN=your-consul-token
+`
 )

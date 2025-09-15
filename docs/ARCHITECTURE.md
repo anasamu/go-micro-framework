@@ -2,7 +2,7 @@
 
 ## Overview
 
-Go Micro Framework adalah framework yang mengintegrasikan library `microservices-library-go` menjadi platform yang mudah digunakan untuk pengembangan microservices. Framework ini menggunakan pola Gateway dan Manager untuk mengorchestrasi berbagai provider dari library yang sudah ada.
+Go Micro Framework adalah framework yang mengintegrasikan library `go-micro-libs` menjadi platform yang mudah digunakan untuk pengembangan microservices. Framework ini menggunakan pola Gateway dan Manager untuk mengorchestrasi berbagai provider dari library yang sudah ada.
 
 ## Core Architecture
 
@@ -36,7 +36,7 @@ Framework menggunakan **Gateway Pattern** sebagai pola arsitektur utama:
 │  ├── Monitoring Gateway                                    │
 │  └── ... other gateways                                    │
 ├─────────────────────────────────────────────────────────────┤
-│  microservices-library-go                                  │
+│  go-micro-libs                                             │
 │  ├── ai/                                                   │
 │  ├── auth/                                                 │
 │  ├── database/                                             │
@@ -179,7 +179,7 @@ templates/
 
 ### 3. Library Integration
 
-Framework mengintegrasikan semua library dari `microservices-library-go`:
+Framework mengintegrasikan semua library dari `go-micro-libs`:
 
 #### AI Services
 ```go
@@ -793,7 +793,7 @@ func (ts *TestSuite) TearDownTest() error {
 
 ## Conclusion
 
-Go Micro Framework menggunakan arsitektur yang modular, extensible, dan production-ready. Framework ini mengintegrasikan semua library dari `microservices-library-go` dengan pola Gateway dan Manager yang konsisten, memungkinkan developer untuk fokus pada business logic sambil mendapatkan semua fitur infrastruktur yang diperlukan.
+Go Micro Framework menggunakan arsitektur yang modular, extensible, dan production-ready. Framework ini mengintegrasikan semua library dari `go-micro-libs` dengan pola Gateway dan Manager yang konsisten, memungkinkan developer untuk fokus pada business logic sambil mendapatkan semua fitur infrastruktur yang diperlukan.
 
 Arsitektur ini memastikan:
 - **Scalability**: Mudah menambah provider dan fitur baru

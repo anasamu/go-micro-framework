@@ -6,18 +6,18 @@ import (
 
 	"{{.ServiceName}}/internal/models"
 
-	"github.com/anasamu/microservices-library-go/database"
+	"github.com/anasamu/go-micro-libs"
 	"gorm.io/gorm"
 )
 
 // Repository handles data access operations
 type Repository struct {
-	dbManager *database.DatabaseManager
+	dbManager *microservices.DatabaseManager
 	db        *gorm.DB
 }
 
 // NewRepository creates a new repository instance
-func NewRepository(dbManager *database.DatabaseManager) *Repository {
+func NewRepository(dbManager *microservices.DatabaseManager) *Repository {
 	return &Repository{
 		dbManager: dbManager,
 	}

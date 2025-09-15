@@ -138,6 +138,6 @@ func getDependencies() ([]Dependency, error) {
 	return []Dependency{
 		{Name: "github.com/spf13/cobra", Version: "v1.7.0"},
 		{Name: "github.com/spf13/viper", Version: "v1.18.2"},
-		{Name: "github.com/anasamu/microservices-library-go", Version: "v1.0.0"},
+		{Name: "github.com/anasamu/go-micro-libs", Version: "v1.0.0"},
 	}, nil
 }

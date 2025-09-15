@@ -1,0 +1,398 @@
+# {{.ServiceName}} Makefile - GraphQL Service
+
+.PHONY: help build run test clean graphql docker-build docker-run deploy
+
+# Default target
+help: ## Show this help message
+	@echo "{{.ServiceName}} - GraphQL Microservice"
+	@echo "Available targets:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# Build targets
+build: ## Build the application
+	@echo "Building {{.ServiceName}}..."
+	go build -o bin/{{.ServiceName}} cmd/main.go
+
+build-linux: ## Build for Linux
+	@echo "Building {{.ServiceName}} for Linux..."
+	GOOS=linux GOARCH=amd64 go build -o bin/{{.ServiceName}}-linux cmd/main.go
+
+build-windows: ## Build for Windows
+	@echo "Building {{.ServiceName}} for Windows..."
+	GOOS=windows GOARCH=amd64 go build -o bin/{{.ServiceName}}.exe cmd/main.go
+
+build-mac: ## Build for macOS
+	@echo "Building {{.ServiceName}} for macOS..."
+	GOOS=darwin GOARCH=amd64 go build -o bin/{{.ServiceName}}-mac cmd/main.go
+
+# Run targets
+run: ## Run the application
+	@echo "Running {{.ServiceName}}..."
+	go run cmd/main.go
+
+run-dev: ## Run in development mode
+	@echo "Running {{.ServiceName}} in development mode..."
+	ENV=development go run cmd/main.go
+
+# GraphQL targets
+graphql: ## Generate GraphQL schema
+	@echo "Generating GraphQL schema..."
+	go run cmd/graphql/main.go generate
+
+graphql-validate: ## Validate GraphQL schema
+	@echo "Validating GraphQL schema..."
+	go run cmd/graphql/main.go validate
+
+graphql-introspect: ## Introspect GraphQL schema
+	@echo "Introspecting GraphQL schema..."
+	curl -X POST http://localhost:8080/graphql \
+		-H "Content-Type: application/json" \
+		-d '{"query": "{ __schema { queryType { name } } }"}'
+
+graphql-playground: ## Open GraphQL Playground
+	@echo "Opening GraphQL Playground..."
+	@echo "GraphQL Playground: http://localhost:8080/playground"
+	@echo "GraphQL Endpoint: http://localhost:8080/graphql"
+
+# Test targets
+test: ## Run all tests
+	@echo "Running tests..."
+	go test -v ./...
+
+test-unit: ## Run unit tests
+	@echo "Running unit tests..."
+	go test -v ./tests/unit/...
+
+test-integration: ## Run integration tests
+	@echo "Running integration tests..."
+	go test -v ./tests/integration/...
+
+test-e2e: ## Run end-to-end tests
+	@echo "Running e2e tests..."
+	go test -v ./tests/e2e/...
+
+test-graphql: ## Test GraphQL schema
+	@echo "Testing GraphQL schema..."
+	curl -X POST http://localhost:8080/graphql \
+		-H "Content-Type: application/json" \
+		-d '{"query": "{ health { status message timestamp } }"}'
+
+test-graphql-queries: ## Test GraphQL queries
+	@echo "Testing GraphQL queries..."
+	@for query in tests/graphql/queries/*.graphql; do \
+		echo "Testing $$query"; \
+		curl -X POST http://localhost:8080/graphql \
+			-H "Content-Type: application/json" \
+			-d "{\"query\": \"$$(cat $$query)\"}"; \
+		echo ""; \
+	done
+
+test-coverage: ## Run tests with coverage
+	@echo "Running tests with coverage..."
+	go test -v -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+test-benchmark: ## Run benchmark tests
+	@echo "Running benchmark tests..."
+	go test -bench=. ./...
+
+# Lint targets
+lint: ## Run linter
+	@echo "Running linter..."
+	golangci-lint run
+
+lint-fix: ## Fix linting issues
+	@echo "Fixing linting issues..."
+	golangci-lint run --fix
+
+# Format targets
+fmt: ## Format code
+	@echo "Formatting code..."
+	go fmt ./...
+
+fmt-check: ## Check code formatting
+	@echo "Checking code formatting..."
+	@if [ $$(gofmt -l . | wc -l) -ne 0 ]; then \
+		echo "Code is not formatted:"; \
+		gofmt -l .; \
+		exit 1; \
+	fi
+
+# Dependency targets
+deps: ## Download dependencies
+	@echo "Downloading dependencies..."
+	go mod download
+
+deps-update: ## Update dependencies
+	@echo "Updating dependencies..."
+	go get -u ./...
+	go mod tidy
+
+deps-vendor: ## Vendor dependencies
+	@echo "Vendoring dependencies..."
+	go mod vendor
+
+# Clean targets
+clean: ## Clean build artifacts
+	@echo "Cleaning build artifacts..."
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+	go clean
+
+clean-all: clean ## Clean everything
+	@echo "Cleaning everything..."
+
+# Docker targets
+docker-build: ## Build Docker image
+	@echo "Building Docker image..."
+	docker build -t {{.ServiceName}}:latest -f deployments/docker/Dockerfile .
+
+docker-build-prod: ## Build production Docker image
+	@echo "Building production Docker image..."
+	docker build -t {{.ServiceName}}:prod -f deployments/docker/Dockerfile.prod .
+
+docker-run: ## Run Docker container
+	@echo "Running Docker container..."
+	docker run -p 8080:8080 --env-file .env {{.ServiceName}}:latest
+
+docker-run-dev: ## Run Docker container in development mode
+	@echo "Running Docker container in development mode..."
+	docker-compose -f deployments/docker/docker-compose.yml up -d
+
+docker-stop: ## Stop Docker container
+	@echo "Stopping Docker container..."
+	docker-compose -f deployments/docker/docker-compose.yml down
+
+docker-logs: ## Show Docker logs
+	@echo "Showing Docker logs..."
+	docker-compose -f deployments/docker/docker-compose.yml logs -f
+
+# Kubernetes targets
+k8s-deploy: ## Deploy to Kubernetes
+	@echo "Deploying to Kubernetes..."
+	kubectl apply -f deployments/kubernetes/
+
+k8s-delete: ## Delete from Kubernetes
+	@echo "Deleting from Kubernetes..."
+	kubectl delete -f deployments/kubernetes/
+
+k8s-logs: ## Show Kubernetes logs
+	@echo "Showing Kubernetes logs..."
+	kubectl logs -l app={{.ServiceName}} -f
+
+k8s-status: ## Show Kubernetes status
+	@echo "Showing Kubernetes status..."
+	kubectl get pods -l app={{.ServiceName}}
+
+# Helm targets
+helm-install: ## Install with Helm
+	@echo "Installing with Helm..."
+	helm install {{.ServiceName}} deployments/helm/
+
+helm-upgrade: ## Upgrade with Helm
+	@echo "Upgrading with Helm..."
+	helm upgrade {{.ServiceName}} deployments/helm/
+
+helm-uninstall: ## Uninstall with Helm
+	@echo "Uninstalling with Helm..."
+	helm uninstall {{.ServiceName}}
+
+helm-status: ## Show Helm status
+	@echo "Showing Helm status..."
+	helm status {{.ServiceName}}
+
+# Development targets
+dev-setup: ## Setup development environment
+	@echo "Setting up development environment..."
+	go mod tidy
+	cp .env.example .env
+	@echo "Please edit .env file with your configuration"
+
+dev-reset: ## Reset development environment
+	@echo "Resetting development environment..."
+	rm -f .env
+	docker-compose -f deployments/docker/docker-compose.yml down -v
+	make clean-all
+
+# Monitoring targets
+monitor: ## Start monitoring
+	@echo "Starting monitoring..."
+	docker-compose -f deployments/docker/docker-compose.monitoring.yml up -d
+
+monitor-stop: ## Stop monitoring
+	@echo "Stopping monitoring..."
+	docker-compose -f deployments/docker/docker-compose.monitoring.yml down
+
+# Health check targets
+health: ## Check service health
+	@echo "Checking service health..."
+	curl -f http://localhost:8080/health || exit 1
+
+health-graphql: ## Check service health with GraphQL
+	@echo "Checking service health with GraphQL..."
+	curl -X POST http://localhost:8080/graphql \
+		-H "Content-Type: application/json" \
+		-d '{"query": "{ health { status message timestamp } }"}'
+
+# Load testing targets
+load-test: ## Run load tests
+	@echo "Running load tests..."
+	@if command -v hey >/dev/null 2>&1; then \
+		hey -n 1000 -c 10 -m POST \
+			-H "Content-Type: application/json" \
+			-d '{"query": "{ health { status message timestamp } }"}' \
+			http://localhost:8080/graphql; \
+	else \
+		echo "Please install hey: go install github.com/rakyll/hey@latest"; \
+	fi
+
+load-test-create: ## Run load tests for create operation
+	@echo "Running load tests for create operation..."
+	@if command -v hey >/dev/null 2>&1; then \
+		hey -n 1000 -c 10 -m POST \
+			-H "Content-Type: application/json" \
+			-d '{"query": "mutation { create{{.ServiceName}}(input: { name: \"Load Test\", description: \"Load test description\" }) { id name description createdAt updatedAt } }"}' \
+			http://localhost:8080/graphql; \
+	else \
+		echo "Please install hey: go install github.com/rakyll/hey@latest"; \
+	fi
+
+# Security targets
+security-scan: ## Run security scan
+	@echo "Running security scan..."
+	gosec ./...
+
+security-audit: ## Run security audit
+	@echo "Running security audit..."
+	go list -json -deps ./... | nancy sleuth
+
+# Documentation targets
+docs: ## Generate documentation
+	@echo "Generating documentation..."
+	godoc -http=:6060
+
+docs-api: ## Generate API documentation
+	@echo "Generating API documentation..."
+	@if command -v graphql-markdown >/dev/null 2>&1; then \
+		graphql-markdown http://localhost:8080/graphql > docs/api.md; \
+	else \
+		echo "Please install graphql-markdown: npm install -g graphql-markdown"; \
+	fi
+
+# Release targets
+release: ## Create a release
+	@echo "Creating release..."
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Please specify VERSION=1.0.0"; \
+		exit 1; \
+	fi
+	git tag -a v$(VERSION) -m "Release v$(VERSION)"
+	git push origin v$(VERSION)
+
+release-build: ## Build release binaries
+	@echo "Building release binaries..."
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Please specify VERSION=1.0.0"; \
+		exit 1; \
+	fi
+	mkdir -p releases/v$(VERSION)
+	GOOS=linux GOARCH=amd64 go build -o releases/v$(VERSION)/{{.ServiceName}}-linux-amd64 cmd/main.go
+	GOOS=windows GOARCH=amd64 go build -o releases/v$(VERSION)/{{.ServiceName}}-windows-amd64.exe cmd/main.go
+	GOOS=darwin GOARCH=amd64 go build -o releases/v$(VERSION)/{{.ServiceName}}-darwin-amd64 cmd/main.go
+	GOOS=darwin GOARCH=arm64 go build -o releases/v$(VERSION)/{{.ServiceName}}-darwin-arm64 cmd/main.go
+
+# Database targets
+db-migrate: ## Run database migrations
+	@echo "Running database migrations..."
+	go run cmd/migrate/main.go up
+
+db-migrate-down: ## Rollback database migrations
+	@echo "Rolling back database migrations..."
+	go run cmd/migrate/main.go down
+
+db-seed: ## Seed database
+	@echo "Seeding database..."
+	go run cmd/seed/main.go
+
+db-reset: ## Reset database
+	@echo "Resetting database..."
+	make db-migrate-down
+	make db-migrate
+	make db-seed
+
+# Configuration targets
+config-validate: ## Validate configuration
+	@echo "Validating configuration..."
+	go run cmd/config/main.go validate
+
+config-generate: ## Generate configuration
+	@echo "Generating configuration..."
+	go run cmd/config/main.go generate
+
+# Service targets
+service-install: ## Install as system service
+	@echo "Installing as system service..."
+	sudo cp scripts/{{.ServiceName}}.service /etc/systemd/system/
+	sudo systemctl daemon-reload
+	sudo systemctl enable {{.ServiceName}}
+
+service-start: ## Start system service
+	@echo "Starting system service..."
+	sudo systemctl start {{.ServiceName}}
+
+service-stop: ## Stop system service
+	@echo "Stopping system service..."
+	sudo systemctl stop {{.ServiceName}}
+
+service-status: ## Show system service status
+	@echo "Showing system service status..."
+	sudo systemctl status {{.ServiceName}}
+
+service-logs: ## Show system service logs
+	@echo "Showing system service logs..."
+	sudo journalctl -u {{.ServiceName}} -f
+
+# Backup targets
+backup: ## Create backup
+	@echo "Creating backup..."
+	@if [ -z "$(BACKUP_DIR)" ]; then \
+		echo "Please specify BACKUP_DIR=/path/to/backup"; \
+		exit 1; \
+	fi
+	mkdir -p $(BACKUP_DIR)
+	tar -czf $(BACKUP_DIR)/{{.ServiceName}}-$(shell date +%Y%m%d-%H%M%S).tar.gz .
+
+restore: ## Restore from backup
+	@echo "Restoring from backup..."
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "Please specify BACKUP_FILE=/path/to/backup.tar.gz"; \
+		exit 1; \
+	fi
+	tar -xzf $(BACKUP_FILE)
+
+# GraphQL specific targets
+graphql-schema-download: ## Download GraphQL schema
+	@echo "Downloading GraphQL schema..."
+	curl -X POST http://localhost:8080/graphql \
+		-H "Content-Type: application/json" \
+		-d '{"query": "{ __schema { queryType { name } } }"}' \
+		-o graphql/schema.json
+
+graphql-schema-upload: ## Upload GraphQL schema
+	@echo "Uploading GraphQL schema..."
+	@if [ -f "graphql/schema.json" ]; then \
+		curl -X POST http://localhost:8080/graphql \
+			-H "Content-Type: application/json" \
+			-d @graphql/schema.json; \
+	else \
+		echo "Schema file not found: graphql/schema.json"; \
+	fi
+
+graphql-playground-start: ## Start GraphQL Playground
+	@echo "Starting GraphQL Playground..."
+	@echo "GraphQL Playground: http://localhost:8080/playground"
+	@echo "GraphQL Endpoint: http://localhost:8080/graphql"
+	@echo "Press Ctrl+C to stop"
+
+# Default target
+.DEFAULT_GOAL := help

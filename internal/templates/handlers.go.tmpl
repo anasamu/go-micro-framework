@@ -8,21 +8,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/anasamu/go-micro-libs"
 )
 
 // Handler handles HTTP requests
 type Handler struct {
-	service     *services.Service
-	authManager *auth.AuthManager
-	logger      *logrus.Logger
+	service      *services.Service
+	authManager  *microservices.AuthManager
+	apiManager   *microservices.APIManager
+	emailManager *microservices.EmailManager
+	logger       *logrus.Logger
 }
 
 // NewHandler creates a new handler instance
-func NewHandler(service *services.Service, authManager *auth.AuthManager) *Handler {
+func NewHandler(service *services.Service, authManager *microservices.AuthManager, apiManager *microservices.APIManager, emailManager *microservices.EmailManager) *Handler {
 	return &Handler{
-		service:     service,
-		authManager: authManager,
-		logger:      logrus.New(),
+		service:      service,
+		authManager:  authManager,
+		apiManager:   apiManager,
+		emailManager: emailManager,
+		logger:       logrus.New(),
 	}
 }
 
@@ -70,6 +75,29 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 			users.POST("/", h.CreateUser)
 			users.PUT("/:id", h.UpdateUser)
 			users.DELETE("/:id", h.DeleteUser)
+		}
+		{{- end}}
+
+		{{- if .WithAPI}}
+		// API thirdparty routes
+		api := v1.Group("/api")
+		{
+			api.POST("/http", h.SendHTTPRequest)
+			api.POST("/graphql", h.SendGraphQLRequest)
+			api.POST("/grpc", h.SendgRPCRequest)
+			api.POST("/websocket", h.ConnectWebSocket)
+		}
+		{{- end}}
+
+		{{- if .WithEmail}}
+		// Email routes
+		email := v1.Group("/email")
+		{
+			email.POST("/send", h.SendEmail)
+			email.POST("/send-template", h.SendEmailWithTemplate)
+			email.POST("/send-batch", h.SendBatchEmails)
+			email.POST("/templates", h.CreateEmailTemplate)
+			email.GET("/templates/:id", h.GetEmailTemplate)
 		}
 		{{- end}}
 	}
@@ -325,3 +353,190 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, nil)
 }
+
+{{- if .WithAPI}}
+
+// SendHTTPRequest handles HTTP API requests
+func (h *Handler) SendHTTPRequest(c *gin.Context) {
+	var req types.HTTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid HTTP request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	apiService := services.NewAPIService(h.service)
+	response, err := apiService.SendHTTPRequest(c.Request.Context(), req.Method, req.URL, req.Headers, req.Body)
+	if err != nil {
+		h.logger.Error("Failed to send HTTP request:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send HTTP request"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// SendGraphQLRequest handles GraphQL API requests
+func (h *Handler) SendGraphQLRequest(c *gin.Context) {
+	var req types.GraphQLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid GraphQL request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	apiService := services.NewAPIService(h.service)
+	response, err := apiService.SendGraphQLRequest(c.Request.Context(), req.Query, req.Variables)
+	if err != nil {
+		h.logger.Error("Failed to send GraphQL request:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send GraphQL request"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// SendgRPCRequest handles gRPC API requests
+func (h *Handler) SendgRPCRequest(c *gin.Context) {
+	var req types.GRPCRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid gRPC request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	apiService := services.NewAPIService(h.service)
+	response, err := apiService.SendgRPCRequest(c.Request.Context(), req.Service, req.Method, req.Data)
+	if err != nil {
+		h.logger.Error("Failed to send gRPC request:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send gRPC request"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// ConnectWebSocket handles WebSocket connections
+func (h *Handler) ConnectWebSocket(c *gin.Context) {
+	var req types.WebSocketRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid WebSocket request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	apiService := services.NewAPIService(h.service)
+	response, err := apiService.ConnectWebSocket(c.Request.Context(), req.URL, req.Headers)
+	if err != nil {
+		h.logger.Error("Failed to connect WebSocket:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect WebSocket"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+{{- end}}
+
+{{- if .WithEmail}}
+
+// SendEmail handles sending emails
+func (h *Handler) SendEmail(c *gin.Context) {
+	var req types.SendEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid send email request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	emailService := services.NewEmailService(h.service)
+	response, err := emailService.SendEmail(c.Request.Context(), req.To, req.Subject, req.Body, req.IsHTML)
+	if err != nil {
+		h.logger.Error("Failed to send email:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// SendEmailWithTemplate handles sending emails with templates
+func (h *Handler) SendEmailWithTemplate(c *gin.Context) {
+	var req types.SendEmailTemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid send email template request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	emailService := services.NewEmailService(h.service)
+	response, err := emailService.SendEmailWithTemplate(c.Request.Context(), req.To, req.TemplateID, req.Data)
+	if err != nil {
+		h.logger.Error("Failed to send email with template:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email with template"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// SendBatchEmails handles sending batch emails
+func (h *Handler) SendBatchEmails(c *gin.Context) {
+	var req types.SendBatchEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid send batch email request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	emailService := services.NewEmailService(h.service)
+	response, err := emailService.SendBatchEmails(c.Request.Context(), req.Emails)
+	if err != nil {
+		h.logger.Error("Failed to send batch emails:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send batch emails"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// CreateEmailTemplate handles creating email templates
+func (h *Handler) CreateEmailTemplate(c *gin.Context) {
+	var req types.CreateEmailTemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error("Invalid create email template request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	emailService := services.NewEmailService(h.service)
+	err := emailService.CreateEmailTemplate(c.Request.Context(), req.TemplateID, req.Name, req.Subject, req.Body)
+	if err != nil {
+		h.logger.Error("Failed to create email template:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create email template"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Email template created successfully"})
+}
+
+// GetEmailTemplate handles retrieving email templates
+func (h *Handler) GetEmailTemplate(c *gin.Context) {
+	templateID := c.Param("id")
+	if templateID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Template ID is required"})
+		return
+	}
+
+	emailService := services.NewEmailService(h.service)
+	template, err := emailService.GetEmailTemplate(c.Request.Context(), templateID)
+	if err != nil {
+		h.logger.Error("Failed to get email template:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get email template"})
+		return
+	}
+
+	c.JSON(http.StatusOK, template)
+}
+
+{{- end}}

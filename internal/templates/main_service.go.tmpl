@@ -1,0 +1,270 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	// USE existing go-micro-libs
+	"github.com/anasamu/go-micro-libs/config"
+	"github.com/anasamu/go-micro-libs/logging"
+	"github.com/anasamu/go-micro-libs/monitoring"
+	"github.com/anasamu/go-micro-libs/database"
+	"github.com/anasamu/go-micro-libs/database/migrations"
+	"github.com/anasamu/go-micro-libs/auth"
+	"github.com/anasamu/go-micro-libs/middleware"
+	"github.com/anasamu/go-micro-libs/communication/providers/grpc"
+	"github.com/anasamu/go-micro-libs/communication/providers/graphql"
+	"github.com/anasamu/go-micro-libs/communication"
+	"github.com/sirupsen/logrus"
+
+	// Generated protobuf files
+	pb "{{.ServiceName}}/protobuf"
+	
+	// Generated GraphQL schema
+	"{{.ServiceName}}/graphql"
+	
+	// Generated handlers
+	"{{.ServiceName}}/internal/handlers"
+	"{{.ServiceName}}/internal/services"
+	"{{.ServiceName}}/internal/repositories"
+	"{{.ServiceName}}/internal/middleware"
+)
+
+func main() {
+	ctx := context.Background()
+	
+	// Initialize using existing libraries
+	configManager := config.NewManager()
+	loggingManager := logging.NewManager()
+	monitoringManager := monitoring.NewManager()
+	databaseManager := database.NewManager()
+	authManager := auth.NewManager()
+	middlewareManager := middleware.NewManager()
+	communicationManager := communication.NewCommunicationManager()
+	
+	// Initialize GRPC and GraphQL providers
+	grpcProvider := grpc.NewProvider(loggingManager.GetLogger())
+	graphqlProvider := graphql.NewProvider(loggingManager.GetLogger())
+	
+	// Bootstrap service using existing libraries
+	if err := bootstrapService(ctx, configManager, loggingManager, monitoringManager, 
+		databaseManager, authManager, middlewareManager, communicationManager,
+		grpcProvider, graphqlProvider); err != nil {
+		log.Fatal("Failed to bootstrap service:", err)
+	}
+	
+	log.Println("Service started successfully")
+	
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	
+	log.Println("Shutting down service...")
+	
+	// Graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	
+	if err := shutdownService(ctx, communicationManager, grpcProvider, graphqlProvider); err != nil {
+		log.Printf("Error during shutdown: %v", err)
+	}
+	
+	log.Println("Service stopped")
+}
+
+func bootstrapService(ctx context.Context, 
+	configManager *config.ConfigManager,
+	loggingManager *logging.LoggingManager,
+	monitoringManager *monitoring.MonitoringManager,
+	databaseManager *database.DatabaseManager,
+	authManager *auth.AuthManager,
+	middlewareManager *middleware.MiddlewareManager,
+	communicationManager *communication.CommunicationManager,
+	grpcProvider *grpc.Provider,
+	graphqlProvider *graphql.Provider) error {
+	
+	// Load configuration using existing library
+	if err := configManager.Load(); err != nil {
+		return err
+	}
+	
+	// Initialize logging using existing library
+	if err := loggingManager.Initialize(); err != nil {
+		return err
+	}
+	
+	// Start monitoring using existing library
+	if err := monitoringManager.Start(); err != nil {
+		return err
+	}
+	
+	// Connect to database using existing library
+	if err := databaseManager.Connect(ctx); err != nil {
+		return err
+	}
+	
+	// Run database migrations using existing library
+	if err := runDatabaseMigrations(ctx, databaseManager, loggingManager.GetLogger()); err != nil {
+		return err
+	}
+	
+	// Initialize authentication using existing library
+	if err := authManager.Initialize(); err != nil {
+		return err
+	}
+	
+	// Setup middleware using existing library
+	if err := middlewareManager.SetupChain(); err != nil {
+		return err
+	}
+	
+	// Register communication providers
+	if err := communicationManager.RegisterProvider(grpcProvider); err != nil {
+		return err
+	}
+	
+	if err := communicationManager.RegisterProvider(graphqlProvider); err != nil {
+		return err
+	}
+	
+	// Configure GRPC provider
+	grpcConfig := map[string]interface{}{
+		"host":                "0.0.0.0",
+		"port":                9090,
+		"max_recv_msg_size":   4 * 1024 * 1024, // 4MB
+		"max_send_msg_size":   4 * 1024 * 1024, // 4MB
+		"enable_reflection":   true,
+	}
+	
+	if err := grpcProvider.Configure(grpcConfig); err != nil {
+		return err
+	}
+	
+	// Configure GraphQL provider
+	graphqlConfig := map[string]interface{}{
+		"host":          "0.0.0.0",
+		"port":          8080,
+		"read_timeout":  30 * time.Second,
+		"write_timeout": 30 * time.Second,
+		"idle_timeout":  120 * time.Second,
+	}
+	
+	if err := graphqlProvider.Configure(graphqlConfig); err != nil {
+		return err
+	}
+	
+	// Initialize repositories
+	{{.ServiceName | lower}}Repo := repositories.New{{.ServiceName}}Repository(databaseManager)
+	
+	// Initialize services
+	{{.ServiceName | lower}}Service := services.New{{.ServiceName}}Service({{.ServiceName | lower}}Repo, loggingManager.GetLogger())
+	
+	// Initialize handlers
+	{{.ServiceName | lower}}Handler := handlers.New{{.ServiceName}}Handler({{.ServiceName | lower}}Service, loggingManager.GetLogger())
+	
+	// Register GRPC services
+	grpcProvider.RegisterService("{{.ServiceName}}Service", {{.ServiceName | lower}}Handler)
+	
+	// Register GraphQL schema
+	if err := registerGraphQLSchema(graphqlProvider, {{.ServiceName | lower}}Handler); err != nil {
+		return err
+	}
+	
+	// Start communication servers
+	if err := communicationManager.Start(ctx, "grpc", grpcConfig); err != nil {
+		return err
+	}
+	
+	if err := communicationManager.Start(ctx, "graphql", graphqlConfig); err != nil {
+		return err
+	}
+	
+	return nil
+}
+
+func runDatabaseMigrations(ctx context.Context, databaseManager *database.DatabaseManager, logger *logrus.Logger) error {
+	// Get default database provider
+	provider, err := databaseManager.GetDefaultProvider()
+	if err != nil {
+		return fmt.Errorf("failed to get default database provider: %w", err)
+	}
+	
+	// Create migration manager using existing library
+	migrationManager := migrations.NewMigrationManager(provider, logger)
+	
+	// Initialize migration table
+	if err := migrationManager.Initialize(ctx); err != nil {
+		return fmt.Errorf("failed to initialize migration table: %w", err)
+	}
+	
+	// Load and apply migrations
+	cliManager := migrations.NewCLIManager(provider, "./migrations", logger)
+	
+	// Apply pending migrations
+	if err := cliManager.Up(ctx); err != nil {
+		return fmt.Errorf("failed to apply database migrations: %w", err)
+	}
+	
+	logger.Info("Database migrations applied successfully")
+	return nil
+}
+
+func registerGraphQLSchema(provider *graphql.Provider, handler *handlers.{{.ServiceName}}Handler) error {
+	// Load GraphQL schema from generated file
+	schema, err := loadGraphQLSchema()
+	if err != nil {
+		return err
+	}
+	
+	// Set schema in provider
+	provider.SetSchema(schema)
+	
+	return nil
+}
+
+func loadGraphQLSchema() (*graphql.Schema, error) {
+	// This would load the generated GraphQL schema
+	// For now, return a default schema
+	return graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{
+			Name: "Query",
+			Fields: graphql.Fields{
+				"hello": &graphql.Field{
+					Type: graphql.String,
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						return "Hello from {{.ServiceName}}!", nil
+					},
+				},
+			},
+		}),
+	})
+}
+
+func shutdownService(ctx context.Context, 
+	communicationManager *communication.CommunicationManager,
+	grpcProvider *grpc.Provider,
+	graphqlProvider *graphql.Provider) error {
+	
+	// Stop communication providers
+	if err := communicationManager.Stop(ctx, "grpc"); err != nil {
+		return err
+	}
+	
+	if err := communicationManager.Stop(ctx, "graphql"); err != nil {
+		return err
+	}
+	
+	// Close communication manager
+	if err := communicationManager.Close(); err != nil {
+		return err
+	}
+	
+	return nil
+}

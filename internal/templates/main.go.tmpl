@@ -9,60 +9,89 @@ import (
 	"syscall"
 	"time"
 
-	// Import existing microservices-library-go libraries
-	"github.com/anasamu/microservices-library-go/config"
-	"github.com/anasamu/microservices-library-go/logging"
-	"github.com/anasamu/microservices-library-go/monitoring"
-	"github.com/anasamu/microservices-library-go/database"
-	"github.com/anasamu/microservices-library-go/auth"
-	"github.com/anasamu/microservices-library-go/middleware"
-	"github.com/anasamu/microservices-library-go/communication"
+	// Import go-micro-libs library
+	microservices "github.com/anasamu/go-micro-libs"
 
 	// Import generated service components
 	"{{.ServiceName}}/internal/handlers"
 	"{{.ServiceName}}/internal/services"
 	"{{.ServiceName}}/internal/repositories"
 	"{{.ServiceName}}/internal/middleware"
+	"{{.ServiceName}}/internal/utils"
 	"{{.ServiceName}}/pkg/types"
 
+	// Core dependencies
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	ctx := context.Background()
 	
+	// Load environment variables (CORE UTILS)
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found: %v", err)
+	}
+	
 	// Initialize logger
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 	logger.SetFormatter(&logrus.JSONFormatter{})
+	
+	// Generate service instance ID (CORE UTILS)
+	serviceID := uuid.New().String()
+	logger.WithField("service_id", serviceID).Info("Starting service")
 
-	// Initialize configuration manager using existing library
-	configManager := config.NewManager()
+	// Initialize CORE configuration manager using go-micro-libs (ALWAYS ENABLED)
+	configManager := microservices.NewConfigManager()
 	if err := configManager.Load(); err != nil {
 		log.Fatal("Failed to load configuration:", err)
 	}
 
-	// Initialize logging manager using existing library
-	loggingManager := logging.NewManager()
+	// Initialize CORE logging manager using go-micro-libs (ALWAYS ENABLED)
+	loggingManager := microservices.NewLoggingManager(
+		microservices.DefaultLoggingManagerConfig(),
+		logger,
+	)
 	if err := loggingManager.Initialize(); err != nil {
 		log.Fatal("Failed to initialize logging:", err)
 	}
 
-	// Initialize monitoring manager using existing library
-	monitoringManager := monitoring.NewMonitoringManager(
-		monitoring.DefaultManagerConfig(),
+	// Initialize CORE monitoring manager using go-micro-libs (ALWAYS ENABLED)
+	monitoringManager := microservices.NewMonitoringManager(
+		microservices.DefaultMonitoringManagerConfig(),
 		logger,
 	)
-	if err := monitoringManager.Start(ctx); err != nil {
+	if err := monitoringManager.Connect(ctx, "prometheus"); err != nil {
 		log.Fatal("Failed to start monitoring:", err)
 	}
 
-	// Initialize database manager using existing library
-	var databaseManager *database.DatabaseManager
+	// Initialize CORE middleware manager using go-micro-libs (ALWAYS ENABLED)
+	middlewareManager := microservices.NewMiddlewareManager(
+		microservices.DefaultMiddlewareManagerConfig(),
+		logger,
+	)
+	if err := middlewareManager.SetupChain(); err != nil {
+		log.Fatal("Failed to setup middleware chain:", err)
+	}
+
+	// Initialize CORE communication manager using go-micro-libs (ALWAYS ENABLED)
+	communicationManager := microservices.NewCommunicationManager(
+		microservices.DefaultCommunicationManagerConfig(),
+		logger,
+	)
+
+	// Initialize CORE utils manager (ALWAYS ENABLED)
+	utilsManager := utils.NewUtilsManager("{{.ServiceName}}")
+	logger.WithField("service_id", utilsManager.GetServiceID()).Info("Utils manager initialized")
+
+	// Initialize database manager using go-micro-libs
+	var databaseManager *microservices.DatabaseManager
 	{{- if .WithDatabase}}
-	databaseManager = database.NewDatabaseManager(
-		database.DefaultManagerConfig(),
+	databaseManager = microservices.NewDatabaseManager(
+		microservices.DefaultDatabaseManagerConfig(),
 		logger,
 	)
 	if err := databaseManager.Connect(ctx, "postgresql"); err != nil {
@@ -70,11 +99,11 @@ func main() {
 	}
 	{{- end}}
 
-	// Initialize auth manager using existing library
-	var authManager *auth.AuthManager
+	// Initialize auth manager using go-micro-libs
+	var authManager *microservices.AuthManager
 	{{- if .WithAuth}}
-	authManager = auth.NewAuthManager(
-		auth.DefaultManagerConfig(),
+	authManager = microservices.NewAuthManager(
+		microservices.DefaultAuthManagerConfig(),
 		logger,
 	)
 	if err := authManager.Initialize(); err != nil {
@@ -82,25 +111,36 @@ func main() {
 	}
 	{{- end}}
 
-	// Initialize middleware manager using existing library
-	middlewareManager := middleware.NewMiddlewareManager(
-		middleware.DefaultManagerConfig(),
-		logger,
-	)
-	if err := middlewareManager.SetupChain(); err != nil {
-		log.Fatal("Failed to setup middleware chain:", err)
-	}
 
-	// Initialize communication manager using existing library
-	communicationManager := communication.NewCommunicationManager(
-		communication.DefaultManagerConfig(),
+	// Initialize API manager using go-micro-libs
+	var apiManager *microservices.APIManager
+	{{- if .WithAPI}}
+	apiManager = microservices.NewAPIManager(
+		microservices.DefaultAPIManagerConfig(),
 		logger,
 	)
+	if err := apiManager.Connect(ctx, "{{.APIProvider}}"); err != nil {
+		log.Fatal("Failed to connect to API system:", err)
+	}
+	{{- end}}
+
+	// Initialize email manager using go-micro-libs
+	var emailManager *microservices.EmailManager
+	{{- if .WithEmail}}
+	emailManager = microservices.NewEmailManager(
+		microservices.DefaultEmailManagerConfig(),
+		logger,
+	)
+	if err := emailManager.Connect(ctx, "{{.EmailProvider}}"); err != nil {
+		log.Fatal("Failed to connect to email system:", err)
+	}
+	{{- end}}
+
 
 	// Initialize service dependencies
 	repository := repositories.NewRepository(databaseManager)
-	service := services.NewService(repository, authManager)
-	handler := handlers.NewHandler(service, authManager)
+	service := services.NewService(repository, authManager, apiManager, emailManager, utilsManager)
+	handler := handlers.NewHandler(service, authManager, apiManager, emailManager, utilsManager)
 
 	// Setup HTTP server
 	router := gin.Default()
@@ -144,6 +184,14 @@ func main() {
 	// Close connections
 	if databaseManager != nil {
 		databaseManager.Close()
+	}
+
+	if apiManager != nil {
+		apiManager.Close()
+	}
+
+	if emailManager != nil {
+		emailManager.Close()
 	}
 
 	if monitoringManager != nil {

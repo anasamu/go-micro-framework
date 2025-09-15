@@ -1,0 +1,562 @@
+# {{.ServiceName}} - GraphQL Microservice
+
+{{.ServiceName}} adalah microservice yang dibangun menggunakan Go dan GraphQL, dengan integrasi library go-micro-libs untuk komunikasi, database, monitoring, dan fitur-fitur lainnya.
+
+## 🚀 Features
+
+- **GraphQL API**: Modern GraphQL API dengan introspection dan playground
+- **Database Integration**: Support untuk PostgreSQL, MySQL, Redis, dan database lainnya
+- **Authentication**: JWT, OAuth, LDAP, SAML support
+- **Monitoring**: Prometheus, Jaeger, Grafana integration
+- **Logging**: Structured logging dengan multiple providers
+- **Middleware**: Auth, rate limiting, circuit breaker, dan lainnya
+- **Health Checks**: Built-in health check endpoints
+- **Service Discovery**: Consul, Kubernetes support
+- **Real-time**: GraphQL subscriptions support
+
+## 📁 Project Structure
+
+```
+{{.ServiceName}}/
+├── cmd/
+│   └── main.go                 # Main application entry point
+├── internal/
+│   ├── handlers/               # GraphQL handlers
+│   ├── models/                 # Data models
+│   ├── repositories/           # Data access layer
+│   ├── services/               # Business logic
+│   └── middleware/             # Custom middleware
+├── graphql/                    # GraphQL schema files
+│   ├── {{.ServiceName}}.graphql # Main GraphQL schema
+│   └── {{.ServiceName}}_schema.go # Go schema implementation
+├── pkg/
+│   └── types/                  # Public types
+├── configs/
+│   ├── config.yaml             # Default configuration
+│   ├── config.dev.yaml         # Development config
+│   └── config.prod.yaml        # Production config
+├── deployments/
+│   ├── docker/
+│   │   ├── Dockerfile
+│   │   └── docker-compose.yml
+│   ├── kubernetes/
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── configmap.yaml
+│   └── helm/
+│       └── Chart.yaml
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── docs/
+│   ├── api.md
+│   └── deployment.md
+├── scripts/
+│   ├── build.sh
+│   ├── test.sh
+│   └── deploy.sh
+├── go.mod
+├── go.sum
+├── Makefile
+└── README.md
+```
+
+## 🛠️ Installation
+
+### Prerequisites
+
+- Go 1.21 or higher
+- Docker and Docker Compose
+- GraphQL client (optional)
+
+### Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd {{.ServiceName}}
+   ```
+
+2. **Install dependencies**
+   ```bash
+   go mod tidy
+   ```
+
+3. **Copy environment file**
+   ```bash
+   cp .env.example .env
+   ```
+
+4. **Edit configuration**
+   ```bash
+   # Edit .env file with your configuration
+   nano .env
+   ```
+
+5. **Run the service**
+   ```bash
+   go run cmd/main.go
+   ```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```bash
+# Service Configuration
+{{.ServiceName | upper}}_SERVICE_NAME={{.ServiceName}}
+{{.ServiceName | upper}}_SERVICE_VERSION=1.0.0
+{{.ServiceName | upper}}_SERVICE_PORT=8080
+
+# Database Configuration
+DATABASE_URL=postgres://user:password@localhost:5432/{{.ServiceName}}?sslmode=disable
+REDIS_URL=redis://localhost:6379
+
+# Authentication
+JWT_SECRET=your-jwt-secret
+OAUTH_CLIENT_ID=your-oauth-client-id
+OAUTH_CLIENT_SECRET=your-oauth-client-secret
+
+# Monitoring
+PROMETHEUS_ENDPOINT=http://localhost:9090
+JAEGER_ENDPOINT=http://localhost:14268/api/traces
+GRAFANA_ENDPOINT=http://localhost:3000
+
+# Logging
+LOG_LEVEL=info
+LOG_FORMAT=json
+```
+
+### Configuration Files
+
+The service supports multiple configuration sources:
+
+- **YAML files**: `configs/config.yaml`
+- **Environment variables**: Prefixed with `{{.ServiceName | upper}}_`
+- **Consul**: For distributed configuration
+- **Vault**: For secrets management
+
+## 🚀 Usage
+
+### GraphQL Playground
+
+Access the GraphQL Playground at: `http://localhost:8080/playground`
+
+### GraphQL Endpoint
+
+GraphQL endpoint: `http://localhost:8080/graphql`
+
+### Example Queries
+
+#### Health Check
+
+```graphql
+query {
+  health {
+    status
+    message
+    timestamp
+  }
+}
+```
+
+#### Service Info
+
+```graphql
+query {
+  serviceInfo {
+    name
+    version
+    description
+    startedAt
+  }
+}
+```
+
+#### Get {{.ServiceName}}
+
+```graphql
+query {
+  {{.ServiceName | lower}}(id: "1") {
+    id
+    name
+    description
+    createdAt
+    updatedAt
+  }
+}
+```
+
+#### List {{.ServiceName}}s
+
+```graphql
+query {
+  {{.ServiceName | lower}}s(page: 1, limit: 10, search: "test") {
+    {{.ServiceName | lower}}s {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+    pagination {
+      page
+      limit
+      total
+      totalPages
+    }
+    response {
+      success
+      message
+      errors
+    }
+  }
+}
+```
+
+#### Create {{.ServiceName}}
+
+```graphql
+mutation {
+  create{{.ServiceName}}(input: {
+    name: "Test {{.ServiceName}}"
+    description: "Test description"
+  }) {
+    id
+    name
+    description
+    createdAt
+    updatedAt
+  }
+}
+```
+
+#### Update {{.ServiceName}}
+
+```graphql
+mutation {
+  update{{.ServiceName}}(input: {
+    id: "1"
+    name: "Updated {{.ServiceName}}"
+    description: "Updated description"
+  }) {
+    id
+    name
+    description
+    createdAt
+    updatedAt
+  }
+}
+```
+
+#### Delete {{.ServiceName}}
+
+```graphql
+mutation {
+  delete{{.ServiceName}}(id: "1") {
+    success
+    message
+    errors
+  }
+}
+```
+
+### GraphQL Client
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+type GraphQLRequest struct {
+    Query     string                 `json:"query"`
+    Variables map[string]interface{} `json:"variables,omitempty"`
+}
+
+type GraphQLResponse struct {
+    Data   interface{} `json:"data"`
+    Errors []struct {
+        Message string `json:"message"`
+    } `json:"errors"`
+}
+
+func main() {
+    // GraphQL query
+    query := `
+        query {
+            health {
+                status
+                message
+                timestamp
+            }
+        }
+    `
+    
+    // Create request
+    reqBody := GraphQLRequest{
+        Query: query,
+    }
+    
+    jsonData, err := json.Marshal(reqBody)
+    if err != nil {
+        panic(err)
+    }
+    
+    // Send request
+    resp, err := http.Post("http://localhost:8080/graphql", "application/json", bytes.NewBuffer(jsonData))
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    
+    // Parse response
+    var graphqlResp GraphQLResponse
+    if err := json.NewDecoder(resp.Body).Decode(&graphqlResp); err != nil {
+        panic(err)
+    }
+    
+    if len(graphqlResp.Errors) > 0 {
+        fmt.Printf("GraphQL errors: %v\n", graphqlResp.Errors)
+        return
+    }
+    
+    fmt.Printf("Response: %+v\n", graphqlResp.Data)
+}
+```
+
+## 🧪 Testing
+
+### Unit Tests
+
+```bash
+make test
+```
+
+### Integration Tests
+
+```bash
+make test-integration
+```
+
+### End-to-End Tests
+
+```bash
+make test-e2e
+```
+
+### GraphQL Testing
+
+```bash
+# Test GraphQL schema
+make test-graphql
+
+# Test GraphQL queries
+make test-graphql-queries
+```
+
+## 🐳 Docker
+
+### Build Image
+
+```bash
+make docker-build
+```
+
+### Run Container
+
+```bash
+make docker-run
+```
+
+### Docker Compose
+
+```bash
+docker-compose up -d
+```
+
+## ☸️ Kubernetes
+
+### Deploy to Kubernetes
+
+```bash
+kubectl apply -f deployments/kubernetes/
+```
+
+### Helm Deployment
+
+```bash
+helm install {{.ServiceName}} deployments/helm/
+```
+
+## 📊 Monitoring
+
+### Health Check
+
+```bash
+curl http://localhost:8080/health
+```
+
+### Metrics
+
+```bash
+curl http://localhost:8080/metrics
+```
+
+### GraphQL Introspection
+
+```bash
+curl -X POST http://localhost:8080/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query": "{ __schema { queryType { name } } }"}'
+```
+
+## 🔒 Security
+
+### Authentication
+
+The service supports multiple authentication methods:
+
+- **JWT**: Token-based authentication
+- **OAuth**: OAuth 2.0 integration
+- **LDAP**: LDAP authentication
+- **SAML**: SAML authentication
+
+### Authorization
+
+- **RBAC**: Role-based access control
+- **ABAC**: Attribute-based access control
+- **ACL**: Access control lists
+
+### GraphQL Security
+
+- **Query Complexity**: Limit query complexity
+- **Query Depth**: Limit query depth
+- **Rate Limiting**: Per-client rate limiting
+- **CORS**: Configurable CORS settings
+
+### TLS
+
+Enable TLS for secure communication:
+
+```yaml
+communication:
+  providers:
+    graphql:
+      tls:
+        enabled: true
+        cert_file: "/path/to/cert.pem"
+        key_file: "/path/to/key.pem"
+```
+
+## 🚀 Deployment
+
+### Production Deployment
+
+1. **Build production image**
+   ```bash
+   make docker-build-prod
+   ```
+
+2. **Deploy to Kubernetes**
+   ```bash
+   kubectl apply -f deployments/kubernetes/
+   ```
+
+3. **Monitor deployment**
+   ```bash
+   kubectl get pods -l app={{.ServiceName}}
+   ```
+
+### Scaling
+
+```bash
+kubectl scale deployment {{.ServiceName}} --replicas=3
+```
+
+## 📚 API Documentation
+
+### GraphQL Schema
+
+The GraphQL schema includes:
+
+#### Types
+
+- **{{.ServiceName}}**: Main entity type
+- **{{.ServiceName}}Input**: Input type for creating {{.ServiceName}}
+- **{{.ServiceName}}UpdateInput**: Input type for updating {{.ServiceName}}
+- **{{.ServiceName}}ListResponse**: Response type for listing {{.ServiceName}}s
+- **PaginationInfo**: Pagination information
+- **Response**: Generic response type
+- **Health**: Health check type
+- **ServiceInfo**: Service information type
+
+#### Queries
+
+- **health**: Health check
+- **serviceInfo**: Service information
+- **{{.ServiceName | lower}}**: Get {{.ServiceName}} by ID
+- **{{.ServiceName | lower}}s**: List {{.ServiceName}}s with pagination
+
+#### Mutations
+
+- **create{{.ServiceName}}**: Create new {{.ServiceName}}
+- **update{{.ServiceName}}**: Update existing {{.ServiceName}}
+- **delete{{.ServiceName}}**: Delete {{.ServiceName}}
+
+#### Subscriptions
+
+- **{{.ServiceName | lower}}Created**: Subscribe to {{.ServiceName}} creation events
+- **{{.ServiceName | lower}}Updated**: Subscribe to {{.ServiceName}} update events
+- **{{.ServiceName | lower}}Deleted**: Subscribe to {{.ServiceName}} deletion events
+
+### Schema Introspection
+
+Use GraphQL introspection to explore the schema:
+
+```graphql
+query {
+  __schema {
+    types {
+      name
+      description
+    }
+  }
+}
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For support and questions:
+
+- Create an issue in the repository
+- Check the documentation
+- Contact the development team
+
+## 🔄 Changelog
+
+### v1.0.0
+- Initial release
+- GraphQL service implementation
+- Database integration
+- Authentication support
+- Monitoring and logging
+- Docker and Kubernetes support
+- GraphQL Playground integration

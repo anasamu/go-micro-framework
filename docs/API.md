@@ -2,7 +2,7 @@
 
 ## Overview
 
-Go Micro Framework menyediakan comprehensive CLI API untuk mengelola microservices development. API ini dirancang untuk memudahkan pengembangan, deployment, dan maintenance microservices menggunakan library `microservices-library-go`.
+Go Micro Framework menyediakan comprehensive CLI API untuk mengelola microservices development. API ini dirancang untuk memudahkan pengembangan, deployment, dan maintenance microservices menggunakan library `go-micro-libs`.
 
 ## CLI Commands
 
@@ -432,7 +432,7 @@ microframework update [flags]
 microframework update
 
 # Update specific library
-microframework update --library=microservices-library-go
+microframework update --library=go-micro-libs
 
 # Update all dependencies
 microframework update --all
@@ -935,7 +935,7 @@ X-RateLimit-Retry-After: 60
 
 ## Conclusion
 
-Go Micro Framework menyediakan comprehensive API untuk mengelola seluruh lifecycle microservices development. API ini dirancang untuk memudahkan developer dalam membuat, mengelola, dan deploy microservices dengan integrasi seamless dari semua library yang ada di `microservices-library-go`.
+Go Micro Framework menyediakan comprehensive API untuk mengelola seluruh lifecycle microservices development. API ini dirancang untuk memudahkan developer dalam membuat, mengelola, dan deploy microservices dengan integrasi seamless dari semua library yang ada di `go-micro-libs`.
 
 Dengan API ini, developer dapat:
 - Generate service dengan konfigurasi yang tepat
